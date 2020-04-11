@@ -89,6 +89,8 @@ Note: If you are in affilation doesn't mean that you are safe from the governmen
     - More Crimes coming up.
   - All those crimes can be policed by the government with or without warrant.
   - Warrant is only needed when a government police needs to capture a player within their own house after a crime has been done, 1 hour grace period.
+- Police System
+  - I'll have to create a ground up on this which means you'll have to read this piece of crap and nothin' more.
 
 ## Additional Features
 
@@ -98,3 +100,5 @@ Note: If you are in affilation doesn't mean that you are safe from the governmen
   - Guns will have more firepower than normal, it's a damage multiplier for all the guns, will research this more.
   - Vehicles can be fitted with armor, which can be damaged first before the cars health will be damaged, will research into this.
   - Player armours will also have an upgrade. Normal armors will damage the player with the damage of the weapon but upgraded armors will have a damage reduction rule. Don't know how to do it yet but will research it in the long run.
+- Prison Break system:
+  - Breaking out of the prison, I'll have to research on this on how to make it more fun. I don't want to create just a small passage way and percentage bar for escaping. It needs to be done professionally and one wrong move may cause the whole police force on your ass.
