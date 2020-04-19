@@ -1,4 +1,4 @@
-[![sampctl](https://img.shields.io/badge/sampctl-sampstgaming-2f2f2f.svg?style=for-the-badge)](https://github.com/SynTacs/syntacs)
+[![sampctl](https://img.shields.io/badge/sampctl-sampstgaming-2f2f2f.svg?style=for-the-badge)](https://github.com/AtraXaz/stgaming_samp)
 
 Note: If you are in affilation doesn't mean that you are safe from the government, with enough budget the police can pay up for information on a certain player. This budget will become a reputation for the affiliation.
 
@@ -12,14 +12,12 @@ Note: If you are in affilation doesn't mean that you are safe from the governmen
   - Silver Knights
   - Government(For Admins, Moderators and Selected Players)
 - Affialiation Registration System
-  - Players must first register inside each affiliation before they can continue on into the game
-  - Players that plays without registering on an affiliation will not have their stats saved the end of their session.
-  - Registered players will have to pay up taxes to the affiliation for their protection.
-  - Players that are high rank will be the one to pay for the affiliation.
-  - Player can also pay up voluntary reputation to level up an affiliation.
+  - Players can either choose to join an affiliation or not
+  - Players who joins affiliations will have affiliations perk as they level up
+  - Players can also leave their affiliation
 - Group System and Gang System
   - Aside from affiliations players can create their own small gangs which will be under the affiliation.
-  - Only High Ranking Players can create their own small gangs
+  - Only players not inside an affiliation can create or join a gang
   - There is also a group system which could only consist of 8 people. The prerequisite number of people on a group before players can create a small gang.
   - Groups can be created by anyone but only the highest ranking member can further the group into a gang.
   - Once a gang is created the group is disolved but it doesn't stop a player from joining other groups and creating their own groups, they won't just be allowed to create a gang. Nor will they be able to join another gang and even take part on its creation.
