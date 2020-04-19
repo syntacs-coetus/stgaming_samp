@@ -63,58 +63,81 @@ MySQL: ServerSecureConnect(){
 
 SpawnPlayerEx(playerid){
     if(cache_is_valid(pData[playerid][pCache])){
+        new query[53 + 11];
         cache_set_active(pData[playerid][pCache]);
         cache_get_value(0, "email", pData[playerid][pEmail], MAX_EMAIL);
         cache_get_value_name_int(0, "referrals", pData[playerid][pReferredPlayers]);
         cache_get_value_int(0, "reputation", pData[playerid][pReputation]);
         cache_get_value_float(0, "newpoints", pData[playerid][pCP]);
         cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
-        if(pData[playerid][pGroup == 2]){
+        if(pData[playerid][pGroup] == 2){
             new affiliation[15];
             cache_get_value(0, "fid6", affiliation, sizeof affiliation);
             if(strcmp(affiliation, "Black Mambas") == 0){
-                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 12 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(db, query);
+                mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 12 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(forumdb, query);
                 pData[playerid][pGroup] = 12;
             }else if(strcmp(affiliation, "Silver Knights") == 0){
-                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 13 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(db, query);
+                mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 13 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(forumdb, query);
                 pData[playerid][pGroup] = 13;
             }else{
-                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 14 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(db, query);
+                mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 14 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(forumdb, query);
                 pData[playerid][pGroup] = 14;
-            }
-        }
-        switch(pData[playerid][pGroup]){
-            case 3, 4, 6:{
-                pData[playerid][pPos][0] = -1605.6788;
-                pData[playerid][pPos][1] = 719.5027;
-                pData[playerid][pPos][2] = 11.9920;
-                pData[playerid][pPos][3] = 180.7348;
-            }
-            case 12:{
-                pData[playerid][pPos][0] = -2732.8354;
-                pData[playerid][pPos][1] = -308.5785;
-                pData[playerid][pPos][2] = 7.1875;
-                pData[playerid][pPos][3] = 233.9780;
-            }
-            case 13:{
-                pData[playerid][pPos][0] = -2584.2507;
-                pData[playerid][pPos][1] = 1362.2104;
-                pData[playerid][pPos][2] = 7.1935;
-                pData[playerid][pPos][3] = 42.6103;
             }
         }
         // Remove cache because player is now spawned.
         // This is for security to and avoid cache leakge.
         cache_delete(pData[playerid][pCache]);
         pData[playerid][pCache] = MYSQL_INVALID_CACHE;
+        inline getCharDet(){
+            if(cache_num_rows() != 0){
+                cache_get_value_float(0, "posx", pData[playerid][pPos][0]);
+                cache_get_value_float(0, "posy", pData[playerid][pPos][1]);
+                cache_get_value_float(0, "posz", pData[playerid][pPos][2]);
+                cache_get_value_float(0, "posa", pData[playerid][pPos][3]);
+                cache_get_value_int(0, "pint", pData[playerid][pInterior]);
+                cache_get_value_int(0, "pvw", pData[playerid][pVirtualWorld]);
+                if(!pData[playerid][pPos][0]){
+                    switch(pData[playerid][pGroup]){
+                        case 3, 4, 6:{
+                            pData[playerid][pPos][0] = -1605.6788;
+                            pData[playerid][pPos][1] = 719.5027;
+                            pData[playerid][pPos][2] = 11.9920;
+                            pData[playerid][pPos][3] = 180.7348;
+                            pData[playerid][pInterior] = 0;
+                            pData[playerid][pVirtualWorld] = 0;
+                        }
+                        case 12:{
+                            pData[playerid][pPos][0] = -2732.8354;
+                            pData[playerid][pPos][1] = -308.5785;
+                            pData[playerid][pPos][2] = 7.1875;
+                            pData[playerid][pPos][3] = 233.9780;
+                            pData[playerid][pInterior] = 0;
+                            pData[playerid][pVirtualWorld] = 0;
+                        }
+                        case 13:{
+                            pData[playerid][pPos][0] = -2584.2507;
+                            pData[playerid][pPos][1] = 1362.2104;
+                            pData[playerid][pPos][2] = 7.1935;
+                            pData[playerid][pPos][3] = 42.6103;
+                            pData[playerid][pInterior] = 0;
+                            pData[playerid][pVirtualWorld] = 0;
+                        }
+                    }
+                }
+            }
+        }
+        mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_chardet WHERE pid = %d", pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline getCharDet, query);
     }else{
         pData[playerid][pPos][0] = -1605.6788;
         pData[playerid][pPos][1] = 719.5027;
         pData[playerid][pPos][2] = 11.9920;
         pData[playerid][pPos][3] = 180.7348;
+        pData[playerid][pInterior] = 0;
+        pData[playerid][pVirtualWorld] = 0;
     }
     pData[playerid][pOnline] = true;
     TogglePlayerControllable(playerid, TRUE);
@@ -122,8 +145,8 @@ SpawnPlayerEx(playerid){
     SetCameraBehindPlayer(playerid);
     SetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
     SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
-    SetPlayerVirtualWorld(playerid, 0);
-    SetPlayerInterior(playerid, 0);
+    SetPlayerVirtualWorld(playerid, pData[playerid][pInterior]);
+    SetPlayerInterior(playerid, pData[playerid][pVirtualWorld]);
     return 1;
 }
 
@@ -147,8 +170,7 @@ YCMD:spawnveh(playerid, params[], help)
     return 1;
 }
 
-main() {
-}
+main() {}
 
 public OnGameModeInit(){
     DisableInteriorEnterExits();
@@ -156,22 +178,18 @@ public OnGameModeInit(){
     UsePlayerPedAnims();
     SetNameTagDrawDistance(MAX_PLAYER_LOOKSIE);
     ShowNameTags(true);
-
-    new MySQLOpt: option_id = mysql_init_options();
-    mysql_set_option(option_id, AUTO_RECONNECT, true);
-
-    db = mysql_connect(HOST, USER, PASS, DATA, option_id);
-    if(db == MYSQL_INVALID_HANDLE || mysql_errno(db) != 0){
-        print("Cannot connect to MySQL Server, shutting down...");
-
-        SendRconCommand("exit");
-        return 1;
-    }
+    forumdb = ForumSecureConnect();
+    sampdb = ServerSecureConnect();
     return 1;
 }
 
 public OnGameModeExit(){
-    mysql_close(db);
+    if(sampdb == MYSQL_DEFAULT_HANDLE){
+        mysql_close(sampdb);
+    }
+    if(forumdb == MYSQL_DEFAULT_HANDLE){
+        mysql_close(sampdb);
+    }
     return 1;
 }
 
@@ -197,6 +215,10 @@ public OnPlayerConnect(playerid){
 }
 
 public OnPlayerDisconnect(playerid, reason){
+    if(pData[playerid][pOnline] == true){
+        static const empty_player[pInfo];
+        pData[playerid] = empty_player;
+    }
     return 1;
 }
 
@@ -233,7 +255,7 @@ public VerifyUserAccount(playerid, bool:success){
 
 public SetPlayerOnConnect(playerid){
     new query[262 + MAX_NAME];
-    inline doLogin(){
+    inline callLogin(){
         if(cache_num_rows() != 0){
             cache_get_value_int(0, "uid", pData[playerid][pID]);
             cache_get_value(0, "password", pData[playerid][pPass], MAX_PASS);
@@ -253,8 +275,9 @@ public SetPlayerOnConnect(playerid){
             SendClientMessage(playerid, -1, "You are not yet registered on the forums");
         }
     }
-    mysql_format(db, query, sizeof query, "SELECT * FROM stg_users LEFT JOIN stg_userfields ON stg_users.uid = stg_userfields.ufid WHERE username = '%e'", pData[playerid][pName]);
-    MySQL_TQueryInline(db, using inline doLogin, query);
+
+    mysql_format(forumdb, query, sizeof query, "SELECT * FROM stg_users LEFT JOIN stg_userfields ON stg_users.uid = stg_userfields.ufid WHERE username = '%e'", pData[playerid][pName]);
+    MySQL_TQueryInline(forumdb, using inline callLogin, query);
     return 1;
 }
 
