@@ -22,16 +22,12 @@
 #define MAX_NAME (MAX_PLAYER_NAME + 1)
 #define MAX_PASS 500
 #define MAX_EMAIL 220
-#define MAX_AFIL 15
-#define GANG_1 "Black Mambas"
-#define GANG_2 "Silver Knights"
 
 enum pInfo{
     pID,
     pName[MAX_NAME],
     pPass[MAX_PASS],
     pEmail[MAX_EMAIL],
-    pAffil[MAX_AFIL],
     pReferredPlayers,
     pReputation,
     Float: pCP,
@@ -56,6 +52,24 @@ SpawnPlayerEx(playerid){
         cache_get_value_name_int(0, "referrals", pData[playerid][pReferredPlayers]);
         cache_get_value_int(0, "reputation", pData[playerid][pReputation]);
         cache_get_value_float(0, "newpoints", pData[playerid][pCP]);
+        cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
+        if(pData[playerid][pGroup == 2]){
+            new affiliation[15];
+            cache_get_value(0, "fid6", affiliation, sizeof affiliation);
+            if(strcmp(affiliation, "Black Mambas") == 0){
+                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 12 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(db, query);
+                pData[playerid][pGroup] = 12;
+            }else if(strcmp(affiliation, "Silver Knights") == 0){
+                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 13 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(db, query);
+                pData[playerid][pGroup] = 13;
+            }else{
+                mysql_format(db, query, sizeof query, "UPDATE stg_users SET usergroup = 14 WHERE uid = %d", pData[playerid][pID]);
+                mysql_tquery(db, query);
+                pData[playerid][pGroup] = 14;
+            }
+        }
         switch(pData[playerid][pGroup]){
             case 3, 4, 6:{
                 pData[playerid][pPos][0] = -1605.6788;
@@ -94,22 +108,6 @@ SpawnPlayerEx(playerid){
     SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
     SetPlayerVirtualWorld(playerid, 0);
     SetPlayerInterior(playerid, 0);
-    return 1;
-}
-
-UpdatePlayerGroup(playerid){
-    inline updateGroup(){
-        if(cache_affected_rows() != 0){
-            cache_delete(pData[playerid][pCache]);
-            pData[playerid][pCache] = MYSQL_INVALID_CACHE;
-            SetPlayerOnConnect(playerid);
-        }
-    }
-    if(strcmp(pData[playerid][pAffil], GANG_1) == 0){
-        MySQL_TQueryInline(db, using inline updateGroup, "UPDATE stg_users SET usergroup = 12 WHERE uid = '%d'", pData[playerid][pID]);
-    }else if(strcmp(pData[playerid][pAffil], GANG_2) == 0){
-        MySQL_TQueryInline(db, using inline updateGroup, "UPDATE stg_users SET usergroup = 13 WHERE uid = '%d'", pData[playerid][pID]);
-    }
     return 1;
 }
 
@@ -197,43 +195,8 @@ public OnPlayerStateChange(playerid, newstate, oldstate){
 
 //custom public
 
-forward FetchPlayerData(playerid);
 forward VerifyUserAccount(playerid, bool:success);
 forward SetPlayerOnConnect(playerid);
-
-public FetchPlayerData(playerid){
-    if(cache_num_rows() != 0){
-        cache_get_value_int(0, "uid", pData[playerid][pID]);
-        cache_get_value(0, "password", pData[playerid][pPass], MAX_PASS);
-        cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
-        pData[playerid][pCache] = cache_save();
-        if(pData[playerid][pGroup] != 2){
-            inline doLogin(pid, dialogid, response, listitem, string:inputtext[]){
-                #pragma unused pid, dialogid, listitem
-                if(response){
-                    bcrypt_verify(playerid, "VerifyUserAccount", inputtext, pData[playerid][pPass]);
-                }else{
-                    SendClientMessage(playerid, -1, "You are leaving the server, come again!");
-                    defer DisconnectPlayer(playerid);
-                }
-            }
-            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
-        }else{
-            cache_set_active(pData[playerid][pCache]);
-            cache_get_value(0, "fid6", pData[playerid][pAffil], MAX_AFIL);
-            if(!isnull(pData[playerid][pAffil])){
-                UpdatePlayerGroup(playerid);
-            }else{
-                SendClientMessage(playerid, -1, "You have not chosen an affiliation yet. Please do it on the forums");
-                defer DisconnectPlayer(playerid);
-            }
-            cache_unset_active();
-        }
-    }else{
-        SendClientMessage(playerid, -1, "You are not yet registered on the forums");
-    }
-    return 1;
-}
 
 public VerifyUserAccount(playerid, bool:success){
     if(success){
@@ -254,8 +217,28 @@ public VerifyUserAccount(playerid, bool:success){
 
 public SetPlayerOnConnect(playerid){
     new query[262 + MAX_NAME];
+    inline doLogin(){
+        if(cache_num_rows() != 0){
+            cache_get_value_int(0, "uid", pData[playerid][pID]);
+            cache_get_value(0, "password", pData[playerid][pPass], MAX_PASS);
+            cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
+            pData[playerid][pCache] = cache_save();
+            inline doLogin(pid, dialogid, response, listitem, string:inputtext[]){
+                #pragma unused pid, dialogid, listitem
+                if(response){
+                    bcrypt_verify(playerid, "VerifyUserAccount", inputtext, pData[playerid][pPass]);
+                }else{
+                    SendClientMessage(playerid, -1, "You are leaving the server, come again!");
+                    defer DisconnectPlayer(playerid);
+                }
+            }
+            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
+        }else{
+            SendClientMessage(playerid, -1, "You are not yet registered on the forums");
+        }
+    }
     mysql_format(db, query, sizeof query, "SELECT * FROM stg_users LEFT JOIN stg_userfields ON stg_users.uid = stg_userfields.ufid WHERE username = '%e'", pData[playerid][pName]);
-    mysql_tquery(db, query, "FetchPlayerData", "d", playerid);
+    MySQL_TQueryInline(db, using inline doLogin, query);
     return 1;
 }
 
