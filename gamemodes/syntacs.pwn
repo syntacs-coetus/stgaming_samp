@@ -36,6 +36,8 @@ enum pInfo{
     pReputation,
     Float: pCP,
     Float: pPos[4],
+    pInterior,
+    pVirtualWorld,
     pGroup,
 
     bool: pOnline,
