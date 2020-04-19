@@ -7,7 +7,8 @@
 #define HOST "127.0.0.1"
 #define USER "root"
 #define PASS ""
-#define DATA "syntacs_gaming"
+#define FORM "syntacs_gaming"
+#define SAMP "stgaming_samp"
 #include <a_mysql>
 
 #define YSI_YES_HEAP_MALLOC
@@ -43,7 +44,22 @@ enum pInfo{
 new 
     pData[MAX_PLAYERS][pInfo],
 
-    MySQL: db;
+    MySQL: forumdb,
+    MySQL: sampdb;
+
+MySQL: ForumSecureConnect(){
+    new MySQLOpt: option_id = mysql_init_options();
+    mysql_set_option(option_id, AUTO_RECONNECT, true);
+
+    return mysql_connect(HOST, USER, PASS, FORM, option_id);
+}
+
+MySQL: ServerSecureConnect(){
+    new MySQLOpt: option_id = mysql_init_options();
+    mysql_set_option(option_id, AUTO_RECONNECT, true);
+
+    return mysql_connect(HOST, USER, PASS, SAMP, option_id);
+}
 
 SpawnPlayerEx(playerid){
     if(cache_is_valid(pData[playerid][pCache])){
