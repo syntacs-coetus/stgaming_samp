@@ -2,7 +2,7 @@
 #define FIXES_ServerVarMsg 0
 #include <fixes>
 
-#define PRODUCTION
+#define SCM SendClientMessage
 
 #define HOST "127.0.0.1"
 #define USER "root"
@@ -15,6 +15,7 @@
 #include <YSI_Visual\y_dialog>
 #include <YSI_Coding\y_timers>
 #include <YSI_Visual\y_commands>
+#include <YSI_Server\y_colours>
 
 #include <samp_bcrypt>
 #include <sscanf2>
@@ -48,22 +49,32 @@ new
     MySQL: sampdb;
 
 MySQL: ForumSecureConnect(){
-    new MySQLOpt: option_id = mysql_init_options();
+    new MySQLOpt: option_id = mysql_init_options(), MySQL: db;
     mysql_set_option(option_id, AUTO_RECONNECT, true);
 
-    return mysql_connect(HOST, USER, PASS, FORM, option_id);
+    db = mysql_connect(HOST, USER, PASS, FORM, option_id);
+    if(mysql_errno(db) != 0 || db == MYSQL_INVALID_HANDLE){
+        print("Secure Connection to the forums has not been established! Shutting down...");
+        SendRconCommand("exit");
+    }
+    return db;
 }
 
 MySQL: ServerSecureConnect(){
-    new MySQLOpt: option_id = mysql_init_options();
+    new MySQLOpt: option_id = mysql_init_options(), MySQL: db;
     mysql_set_option(option_id, AUTO_RECONNECT, true);
 
-    return mysql_connect(HOST, USER, PASS, SAMP, option_id);
+    db = mysql_connect(HOST, USER, PASS, SAMP, option_id);
+    if(mysql_errno(db) != 0 || db == MYSQL_INVALID_HANDLE){
+        print("Secure Connection to the server has not been established! Shutting down...");
+        SendRconCommand("exit");
+    }
+    return db;
 }
 
 SpawnPlayerEx(playerid){
     if(cache_is_valid(pData[playerid][pCache])){
-        new query[53 + 11];
+        new query[119 + (11 * 3) + (11 * 15)];
         cache_set_active(pData[playerid][pCache]);
         cache_get_value(0, "email", pData[playerid][pEmail], MAX_EMAIL);
         cache_get_value_name_int(0, "referrals", pData[playerid][pReferredPlayers]);
@@ -75,15 +86,15 @@ SpawnPlayerEx(playerid){
             cache_get_value(0, "fid6", affiliation, sizeof affiliation);
             if(strcmp(affiliation, "Black Mambas") == 0){
                 mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 12 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(forumdb, query);
+                mysql_query(forumdb, query);
                 pData[playerid][pGroup] = 12;
             }else if(strcmp(affiliation, "Silver Knights") == 0){
                 mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 13 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(forumdb, query);
+                mysql_query(forumdb, query);
                 pData[playerid][pGroup] = 13;
             }else{
                 mysql_format(forumdb, query, sizeof query, "UPDATE stg_users SET usergroup = 14 WHERE uid = %d", pData[playerid][pID]);
-                mysql_tquery(forumdb, query);
+                mysql_query(forumdb, query);
                 pData[playerid][pGroup] = 14;
             }
         }
@@ -126,18 +137,28 @@ SpawnPlayerEx(playerid){
                             pData[playerid][pVirtualWorld] = 0;
                         }
                     }
+                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = '%f', posy = '%f', posz = '%f', posa = '%f', posint = '%d', posvw = '%d' WHERE pid = '%d'", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pInterior], pData[playerid]  [pVirtualWorld], pData[playerid][pID]);
+                    mysql_query(sampdb, query);
                 }
+            }else{
+                inline CreateCharacterDetails(){
+                    if(cache_affected_rows() != 0){
+                        mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_chardet WHERE pid = %d", pData[playerid][pID]);
+                        MySQL_TQueryInline(sampdb, using inline getCharDet, query);
+                    }
+                }
+                mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_chardet (pid) VALUES (%d)", pData[playerid][pID]);
+                MySQL_TQueryInline(sampdb, using inline CreateCharacterDetails, query);
             }
         }
         mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_chardet WHERE pid = %d", pData[playerid][pID]);
         MySQL_TQueryInline(sampdb, using inline getCharDet, query);
     }else{
-        pData[playerid][pPos][0] = -1605.6788;
-        pData[playerid][pPos][1] = 719.5027;
-        pData[playerid][pPos][2] = 11.9920;
-        pData[playerid][pPos][3] = 180.7348;
-        pData[playerid][pInterior] = 0;
-        pData[playerid][pVirtualWorld] = 0;
+        SCM(playerid, X11_FIREBRICK, "A problem has occured during your spawn. Please notify an admin if this has happened a couple of times");
+        SCM(playerid, X11_FIREBRICK, "This problem occurs when connecting to the Server Database encountered an error!");
+        SCM(playerid, X11_FIREBRICK, "Re-Logging will be the only fix for this.");
+        SCM(playerid, X11_FIREBRICK, "Thank you for understanding us, we only want to keep your data's secure");
+        defer DisconnectPlayer(playerid);
     }
     pData[playerid][pOnline] = true;
     TogglePlayerControllable(playerid, TRUE);
@@ -205,12 +226,34 @@ public OnPlayerConnect(playerid){
 	pData[playerid] = empty_player;
 
     GetPlayerName(playerid, pData[playerid][pName], MAX_NAME);
+    new query[45 + MAX_NAME];
 
-    #if defined PRODUCTION
-        SetPlayerOnConnect(playerid);
-    #else
-        SpawnPlayerEx(playerid);
-    #endif
+    inline InitiatePlayerLogin(){
+        if(cache_num_rows() != 0){
+            cache_get_value_int(0, "uid", pData[playerid][pID]);
+            cache_get_value(0, "password", pData[playerid][pPass], MAX_PASS);
+            cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
+            pData[playerid][pCache] = cache_save();
+            inline doLogin(pid, dialogid, response, listitem, string:inputtext[]){
+                #pragma unused pid, dialogid, listitem
+                if(response){
+                    bcrypt_verify(playerid, "VerifyUserAccount", inputtext, pData[playerid][pPass]);
+                }else{
+                    SendClientMessage(playerid, X11_FIREBRICK, "You are leaving the server, come again!");
+                    defer DisconnectPlayer(playerid);
+                }
+            }
+            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
+        }else{
+            SCM(playerid, X11_DARK_GOLDENROD_2, "You are not registered on the forums. Please try again.");
+            cache_delete(pData[playerid][pCache]);
+            pData[playerid][pCache] = MYSQL_INVALID_CACHE;
+            defer DisconnectPlayer(playerid);
+        }
+    }
+
+    mysql_format(forumdb, query, sizeof query, "SELECT * FROM stg_users WHERE username = '%e'", pData[playerid][pName]);
+    MySQL_TQueryInline(forumdb, using inline InitiatePlayerLogin, query);
     return 1;
 }
 
@@ -251,34 +294,6 @@ public VerifyUserAccount(playerid, bool:success){
         }
         Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
     }
-}
-
-public SetPlayerOnConnect(playerid){
-    new query[262 + MAX_NAME];
-    inline callLogin(){
-        if(cache_num_rows() != 0){
-            cache_get_value_int(0, "uid", pData[playerid][pID]);
-            cache_get_value(0, "password", pData[playerid][pPass], MAX_PASS);
-            cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
-            pData[playerid][pCache] = cache_save();
-            inline doLogin(pid, dialogid, response, listitem, string:inputtext[]){
-                #pragma unused pid, dialogid, listitem
-                if(response){
-                    bcrypt_verify(playerid, "VerifyUserAccount", inputtext, pData[playerid][pPass]);
-                }else{
-                    SendClientMessage(playerid, -1, "You are leaving the server, come again!");
-                    defer DisconnectPlayer(playerid);
-                }
-            }
-            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
-        }else{
-            SendClientMessage(playerid, -1, "You are not yet registered on the forums");
-        }
-    }
-
-    mysql_format(forumdb, query, sizeof query, "SELECT * FROM stg_users LEFT JOIN stg_userfields ON stg_users.uid = stg_userfields.ufid WHERE username = '%e'", pData[playerid][pName]);
-    MySQL_TQueryInline(forumdb, using inline callLogin, query);
-    return 1;
 }
 
 timer DisconnectPlayer[100](playerid){
