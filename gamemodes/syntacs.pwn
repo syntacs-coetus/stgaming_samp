@@ -67,6 +67,13 @@ new
     MySQL: forumdb,
     MySQL: sampdb;
 
+__SetPlayerSkills(playerid){
+    for(new i = 0, j = 10; i <= j; i++){
+        SetPlayerSkillLevel(playerid, i, 1);
+    }
+    return 1;
+}
+
 MySQL: ForumSecureConnect(){
     new MySQLOpt: option_id = mysql_init_options(), MySQL: db;
     mysql_set_option(option_id, AUTO_RECONNECT, true);
