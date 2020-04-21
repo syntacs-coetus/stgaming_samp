@@ -1,7 +1,13 @@
 #include <a_samp>
+
+#define DEVELOPMENT
+
+
+
 #define FIXES_ServerVarMsg 0
 #include <fixes>
 #include <weapon-config>
+
 
 #define SCM SendClientMessage
 
@@ -20,6 +26,7 @@
 
 #include <samp_bcrypt>
 #include <sscanf2>
+#include <streamer>
 
 
 #define MAX_PLAYER_LOOKSIE 25.0
@@ -27,6 +34,7 @@
 #define MAX_PASS 500
 #define MAX_EMAIL 220
 #define MAX_DATETIME 20
+#define MAX_DEATHPICKUP 10
 
 enum pInfo{
     pID,
@@ -60,6 +68,14 @@ enum pInfo{
 new 
     pData[MAX_PLAYERS][pInfo],
 
+    bool: pDyingDamageImmune[MAX_PLAYERS],
+    bool: isDying[MAX_PLAYERS],
+    bool: isCritical[MAX_PLAYERS],
+
+    STREAMER_TAG_PICKUP: deathPickup[MAX_DEATHPICKUP],
+    moneyDropped[MAX_DEATHPICKUP],
+    dropperId[MAX_DEATHPICKUP],
+
     Float: spawnLoc[3][4] = {
         {-1605.6788,719.5027,11.9920,180.7348},
         {-2732.8354,-308.5785,7.1875,233.9780},
@@ -68,6 +84,15 @@ new
 
     MySQL: forumdb,
     MySQL: sampdb;
+
+__GetEmptyDeathPickup(){
+    for(new i = 0, j = MAX_DEATHPICKUP; i < j; i++){
+        if(deathPickup[i] == STREAMER_TAG_PICKUP: -1){
+            return i;
+        }
+    }
+    return -1;
+}
 
 __SetPlayerSkills(playerid){
     for(new i = 0, j = 10; i <= j; i++){
@@ -200,7 +225,7 @@ SpawnPlayerEx(playerid){
                 SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
                 SetPlayerVirtualWorld(playerid, pData[playerid][pInterior]);
                 SetPlayerInterior(playerid, pData[playerid][pVirtualWorld]);
-                defer __GivePlayerMoney(playerid, pData[playerid][pMoney]);
+                defer __GivePlayerMoney(playerid);
                 defer __SetPlayerSkin(playerid);
                 defer __SetPlayerScoreBoard(playerid);
             }else{
@@ -268,6 +293,10 @@ public OnGameModeInit(){
 
     forumdb = ForumSecureConnect();
     sampdb = ServerSecureConnect();
+
+    for(new i = 0, j = MAX_DEATHPICKUP; i < j; i++){
+        deathPickup[i] = STREAMER_TAG_PICKUP: -1;
+    }
     return 1;
 }
 
@@ -330,18 +359,20 @@ public OnPlayerConnect(playerid){
 
 public OnPlayerDisconnect(playerid, reason){
     if(pData[playerid][pOnline] == true){
-        new query[116 + (15 * 4) + (11 * 4)];
-        GetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
-        GetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
-        pData[playerid][pInterior] = GetPlayerInterior(playerid);
-        pData[playerid][pVirtualWorld] = GetPlayerVirtualWorld(playerid);
-        pData[playerid][pEquippedGun] = GetPlayerWeapon(playerid);
-        inline SaveDisconnect(){
-            static const empty_player[pInfo];
-            pData[playerid] = empty_player;
-        }
-        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = %f, posy = %f, posz = %f, posa = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
-        MySQL_TQueryInline(sampdb, using inline SaveDisconnect, query);
+        #if !defined DEVELOPMENT
+            new query[116 + (15 * 4) + (11 * 4)];
+            GetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
+            GetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
+            pData[playerid][pInterior] = GetPlayerInterior(playerid);
+            pData[playerid][pVirtualWorld] = GetPlayerVirtualWorld(playerid);
+            pData[playerid][pEquippedGun] = GetPlayerWeapon(playerid);
+            inline SaveDisconnect(){
+                static const empty_player[pInfo];
+                pData[playerid] = empty_player;
+            }
+            mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = %f, posy = %f, posz = %f, posa = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
+            MySQL_TQueryInline(sampdb, using inline SaveDisconnect, query);
+        #endif
     }
     return 1;
 }
@@ -366,16 +397,70 @@ public OnPlayerStateChange(playerid, newstate, oldstate){
 }
 
 public OnPlayerDamage(&playerid, &Float:amount, &issuerid, &weapon, &bodypart){
+    if(pDyingDamageImmune[playerid]) return 0;
     return 1;
 }
 
 public OnPlayerPrepareDeath(playerid, WC_CONST animlib[32], WC_CONST animname[32], &anim_lock, &respawn_time){
-    print("Dying!!!");
+    if(pData[playerid][pOnline]){
+        if(!isDying[playerid]){
+            pDyingDamageImmune[playerid] = true;
+        }
+    }
     return 1;
 }
 
 public OnPlayerDeathFinished(playerid, bool: cancelable){
-    print("Alive!!!");
+    if(pData[playerid][pOnline]){
+        new Float: tmpPos[3], tmpInt, tmpWorld, __pickid;
+        GetPlayerPos(playerid, tmpPos[0], tmpPos[1], tmpPos[2]);
+        tmpInt = GetPlayerInterior(playerid);
+        tmpWorld = GetPlayerVirtualWorld(playerid);
+        if(isDying[playerid]){
+            new mDrop = 0;
+            GameTextForPlayer(playerid, "~r~A player has finished you off!~n~You've lost some of your money and items.", 3000, 3);
+            if(pData[playerid][pMoney] >= 100){
+                new rand = random(20) + 10, Float: perc = float(rand) / 100.0;
+                mDrop = floatround(pData[playerid][pMoney] * perc, floatround_floor);
+            }
+            pData[playerid][pMoney] -= mDrop;
+            printf("%d", pData[playerid][pMoney]);
+            defer __GivePlayerMoney(playerid);
+            __pickid = __GetEmptyDeathPickup();
+            SetPlayerPos(playerid, tmpPos[0] + 5.0, tmpPos[1], tmpPos[2]);
+            SetPlayerInterior(playerid, tmpInt);
+            SetPlayerVirtualWorld(playerid, tmpWorld);
+            deathPickup[__pickid] = CreateDynamicPickup(1575, 1, tmpPos[0], tmpPos[1] + 0.5, tmpPos[2], tmpWorld, tmpInt);
+            moneyDropped[__pickid] = mDrop;
+            dropperId[__pickid] = playerid;
+            defer removeDeatchPickup(__pickid);
+        }
+        isDying[playerid] = true;
+        if(isDying[playerid] && pDyingDamageImmune[playerid]){
+            GameTextForPlayer(playerid, "~y~You are dying!~n~Medics have been alerted of your location!", 3000, 3);
+            pDyingDamageImmune[playerid] = false;
+        }
+    }
+    return 0;
+}
+
+public OnPlayerPickUpDynamicPickup(playerid, STREAMER_TAG_PICKUP:pickupid){
+    for(new i = 0, j = MAX_DEATHPICKUP; i < j; i++){
+        if(deathPickup[i] == pickupid){
+            if(dropperId[i] != playerid){
+                new string[19 + 11];
+                format(string, sizeof string, "You have taken $%d", moneyDropped[i]);
+                SCM(playerid, X11_GREEN, string);
+                pData[playerid][pMoney] += moneyDropped[playerid];
+                __GivePlayerMoney(playerid);
+                DestroyDynamicPickup(deathPickup[i]);
+                deathPickup[i] = STREAMER_TAG_PICKUP:-1;
+                moneyDropped[i] = 0;
+                dropperId[i] = INVALID_PLAYER_ID;
+                break;
+            }
+        }
+    }
     return 1;
 }
 
@@ -405,6 +490,13 @@ public VerifyUserAccount(playerid, bool:success){
         }
         Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
     }
+}
+
+timer removeDeatchPickup[10000](pickid){
+    DestroyDynamicPickup(deathPickup[pickid]);
+    deathPickup[pickid] = STREAMER_TAG_PICKUP: -1;
+    moneyDropped[pickid] = 0;
+    dropperId[pickid] = INVALID_PLAYER_ID;
 }
 
 timer DisconnectPlayer[100](playerid){
@@ -446,11 +538,11 @@ timer __SetPlayerScoreBoard[100](playerid){
     }
 }
 
-timer __GivePlayerMoney[100](playerid, monies){
+timer __GivePlayerMoney[100](playerid){
     if(GetPlayerMoney(playerid) != 0){
         ResetPlayerMoney(playerid);
     }
-    GivePlayerMoney(playerid, 0+monies);
+    GivePlayerMoney(playerid, pData[playerid][pMoney]);
 }
 
 timer __SetPlayerSkin[100](playerid){
