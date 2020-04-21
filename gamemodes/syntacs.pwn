@@ -104,9 +104,6 @@ SpawnPlayerEx(playerid){
         cache_set_active(pData[playerid][pCache]);
         cache_get_value(0, "email", pData[playerid][pEmail], MAX_EMAIL);
         cache_get_value_name_int(0, "referrals", pData[playerid][pReferredPlayers]);
-        cache_get_value_int(0, "reputation", pData[playerid][pReputation]);
-        cache_get_value_float(0, "newpoints", pData[playerid][pCP]);
-        cache_get_value_int(0, "usergroup", pData[playerid][pGroup]);
         if(pData[playerid][pGroup] == 2){
             new affiliation[15];
             cache_get_value(0, "fid6", affiliation, sizeof affiliation);
@@ -134,38 +131,76 @@ SpawnPlayerEx(playerid){
                 cache_get_value_float(0, "posy", pData[playerid][pPos][1]);
                 cache_get_value_float(0, "posz", pData[playerid][pPos][2]);
                 cache_get_value_float(0, "posa", pData[playerid][pPos][3]);
-                cache_get_value_int(0, "pint", pData[playerid][pInterior]);
-                cache_get_value_int(0, "pvw", pData[playerid][pVirtualWorld]);
-                if(!pData[playerid][pPos][0]){
+                cache_get_value_int(0, "posint", pData[playerid][pInterior]);
+                cache_get_value_int(0, "posvw", pData[playerid][pVirtualWorld]);
+                cache_get_value_int(0, "prep", pData[playerid][pReputation]);
+                cache_get_value_int(0, "pexp", pData[playerid][pEXP]);
+                cache_get_value_int(0, "pmoney", pData[playerid][pMoney]);
+                cache_get_value_int(0, "pskin", pData[playerid][pSkin]);
+                cache_get_value_int(0, "pgun", pData[playerid][pEquippedGun]);
+                cache_get_value_int(0, "pkills", pData[playerid][pKills]);
+                cache_get_value_int(0, "pdeaths", pData[playerid][pDeaths]);
+                cache_get_value_int(0, "pprisoned", pData[playerid][pPrisoned]);
+                cache_get_value_int(0, "pcaught", pData[playerid][pCaught]);
+                cache_get_value_int(0, "psaves", pData[playerid][pSaves]);
+                cache_get_value_int(0, "pvip", pData[playerid][pVIP]);
+                cache_get_value(0, "pvipexp", pData[playerid][pVIPEXP]);
+                if(pData[playerid][pPos][0] == 0.0){
                     switch(pData[playerid][pGroup]){
                         case 3, 4, 6:{
-                            pData[playerid][pPos][0] = -1605.6788;
-                            pData[playerid][pPos][1] = 719.5027;
-                            pData[playerid][pPos][2] = 11.9920;
-                            pData[playerid][pPos][3] = 180.7348;
+                            pData[playerid][pPos][0] = spawnLoc[0][0];
+                            pData[playerid][pPos][1] = spawnLoc[0][1];
+                            pData[playerid][pPos][2] = spawnLoc[0][2];
+                            pData[playerid][pPos][3] = spawnLoc[0][3];
                             pData[playerid][pInterior] = 0;
                             pData[playerid][pVirtualWorld] = 0;
+                            // switch(pData[playerid][pGroup]){
+                            //     case 3: pData[playerid][pAdmin] = 5;
+                            //     case 4: pData[playerid][pAdmin] = 6;
+                            //     case 6: pData[playerid][pAdmin] = 1;
+                            // }
+                            // mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET padmin = %d WHERE pid = %d", pData[playerid][pAdmin], pData[playerid][pID]);
+                            // mysql_query(sampdb, query);
                         }
                         case 12:{
-                            pData[playerid][pPos][0] = -2732.8354;
-                            pData[playerid][pPos][1] = -308.5785;
-                            pData[playerid][pPos][2] = 7.1875;
-                            pData[playerid][pPos][3] = 233.9780;
+                            pData[playerid][pPos][0] = spawnLoc[1][0];
+                            pData[playerid][pPos][1] = spawnLoc[1][1];
+                            pData[playerid][pPos][2] = spawnLoc[1][2];
+                            pData[playerid][pPos][3] = spawnLoc[1][3];
                             pData[playerid][pInterior] = 0;
                             pData[playerid][pVirtualWorld] = 0;
                         }
                         case 13:{
-                            pData[playerid][pPos][0] = -2584.2507;
-                            pData[playerid][pPos][1] = 1362.2104;
-                            pData[playerid][pPos][2] = 7.1935;
-                            pData[playerid][pPos][3] = 42.6103;
+                            pData[playerid][pPos][0] = spawnLoc[2][0];
+                            pData[playerid][pPos][1] = spawnLoc[2][1];
+                            pData[playerid][pPos][2] = spawnLoc[2][2];
+                            pData[playerid][pPos][3] = spawnLoc[2][3];
                             pData[playerid][pInterior] = 0;
                             pData[playerid][pVirtualWorld] = 0;
                         }
+                        case 14:{
+                            new const rand = random(sizeof spawnLoc);
+                            pData[playerid][pPos][0] = spawnLoc[rand][0];
+                            pData[playerid][pPos][1] = spawnLoc[rand][1];
+                            pData[playerid][pPos][2] = spawnLoc[rand][2];
+                            pData[playerid][pPos][3] = spawnLoc[rand][3];
+                            pData[playerid][pInterior] = 0;
+                            pData[playerid][pVirtualWorld] = 0;
+                        } 
                     }
                     mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = '%f', posy = '%f', posz = '%f', posa = '%f', posint = '%d', posvw = '%d' WHERE pid = '%d'", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pInterior], pData[playerid]  [pVirtualWorld], pData[playerid][pID]);
                     mysql_query(sampdb, query);
                 }
+                pData[playerid][pOnline] = true;
+
+                SetCameraBehindPlayer(playerid);
+                SetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
+                SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
+                SetPlayerVirtualWorld(playerid, pData[playerid][pInterior]);
+                SetPlayerInterior(playerid, pData[playerid][pVirtualWorld]);
+                defer __GivePlayerMoney(playerid, pData[playerid][pMoney]);
+                defer __SetPlayerSkin(playerid);
+                defer __SetPlayerScoreBoard(playerid);
             }else{
                 inline CreateCharacterDetails(){
                     if(cache_affected_rows() != 0){
@@ -186,14 +221,6 @@ SpawnPlayerEx(playerid){
         SCM(playerid, X11_FIREBRICK, "Thank you for understanding us, we only want to keep your data's secure");
         defer DisconnectPlayer(playerid);
     }
-    pData[playerid][pOnline] = true;
-    TogglePlayerControllable(playerid, TRUE);
-    TogglePlayerSpectating(playerid, FALSE);
-    SetCameraBehindPlayer(playerid);
-    SetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
-    SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
-    SetPlayerVirtualWorld(playerid, pData[playerid][pInterior]);
-    SetPlayerInterior(playerid, pData[playerid][pVirtualWorld]);
     return 1;
 }
 
@@ -217,7 +244,8 @@ YCMD:spawnveh(playerid, params[], help)
     return 1;
 }
 
-main() {}
+main() {
+}
 
 public OnGameModeInit(){
     DisableInteriorEnterExits();
@@ -246,12 +274,14 @@ public OnPlayerConnect(playerid){
 
     TogglePlayerControllable(playerid, FALSE);
     TogglePlayerSpectating(playerid, TRUE);
-
     
 	static const empty_player[pInfo];
 	pData[playerid] = empty_player;
 
     GetPlayerName(playerid, pData[playerid][pName], MAX_NAME);
+
+    __SetPlayerSkills(playerid);
+    SetPlayerColor(playerid, X11_SNOW);
     new query[45 + MAX_NAME];
 
     inline InitiatePlayerLogin(){
@@ -272,8 +302,10 @@ public OnPlayerConnect(playerid){
             Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
         }else{
             SCM(playerid, X11_DARK_GOLDENROD_2, "You are not registered on the forums. Please try again.");
-            cache_delete(pData[playerid][pCache]);
-            pData[playerid][pCache] = MYSQL_INVALID_CACHE;
+            if(cache_is_valid(pData[playerid][pCache]) || pData[playerid][pCache] != MYSQL_INVALID_CACHE){
+                cache_delete(pData[playerid][pCache]);
+                pData[playerid][pCache] = MYSQL_INVALID_CACHE;
+            }
             defer DisconnectPlayer(playerid);
         }
     }
@@ -285,8 +317,18 @@ public OnPlayerConnect(playerid){
 
 public OnPlayerDisconnect(playerid, reason){
     if(pData[playerid][pOnline] == true){
-        static const empty_player[pInfo];
-        pData[playerid] = empty_player;
+        new query[116 + (15 * 4) + (11 * 4)];
+        GetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
+        GetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
+        pData[playerid][pInterior] = GetPlayerInterior(playerid);
+        pData[playerid][pVirtualWorld] = GetPlayerVirtualWorld(playerid);
+        pData[playerid][pEquippedGun] = GetPlayerWeapon(playerid);
+        inline SaveDisconnect(){
+            static const empty_player[pInfo];
+            pData[playerid] = empty_player;
+        }
+        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = %f, posy = %f, posz = %f, posa = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline SaveDisconnect, query);
     }
     return 1;
 }
@@ -307,6 +349,8 @@ forward SetPlayerOnConnect(playerid);
 
 public VerifyUserAccount(playerid, bool:success){
     if(success){
+        TogglePlayerSpectating(playerid, FALSE);
+        TogglePlayerControllable(playerid, TRUE);
         SpawnPlayerEx(playerid);
     }else{
         inline doLogin(pid, dialogid, response, listitem, string:inputtext[]){
@@ -324,4 +368,51 @@ public VerifyUserAccount(playerid, bool:success){
 
 timer DisconnectPlayer[100](playerid){
     Kick(playerid);
+}
+
+timer __SetPlayerScoreBoard[100](playerid, experience){
+    pData[playerid][pEXP] += experience;
+    switch(pData[playerid][pEXP]){
+        case 0..50:{
+            if(GetPlayerScore(playerid) != 1){
+                SetPlayerScore(playerid, 1);
+            }
+        }
+        case 51..100:{
+            if(GetPlayerScore(playerid) != 2){
+                SetPlayerScore(playerid, 2);
+            }
+        }
+        case 101..150:{
+            if(GetPlayerScore(playerid) != 3){
+                SetPlayerScore(playerid, 3);
+            }
+        }
+        case 151..200:{
+            if(GetPlayerScore(playerid) != 4){
+                SetPlayerScore(playerid, 4);
+            }
+        }
+        case 201..250:{
+            if(GetPlayerScore(playerid) != 5){
+                SetPlayerScore(playerid, 5);
+            }
+        }
+        case 251..300:{
+            if(GetPlayerScore(playerid) != 6){
+                SetPlayerScore(playerid, 6);
+            }
+        }
+    }
+}
+
+timer __GivePlayerMoney[100](playerid, monies){
+    if(GetPlayerMoney(playerid) != 0){
+        ResetPlayerMoney(playerid);
+    }
+    GivePlayerMoney(playerid, 0+monies);
+}
+
+timer __SetPlayerSkin[100](playerid){
+    SetPlayerSkin(playerid, pData[playerid][pSkin]);
 }
