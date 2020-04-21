@@ -282,7 +282,7 @@ public OnPlayerConnect(playerid){
 
     __SetPlayerSkills(playerid);
     SetPlayerColor(playerid, X11_SNOW);
-    new query[45 + MAX_NAME];
+    new query[112 + MAX_NAME];
 
     inline InitiatePlayerLogin(){
         if(cache_num_rows() != 0){
@@ -310,7 +310,7 @@ public OnPlayerConnect(playerid){
         }
     }
 
-    mysql_format(forumdb, query, sizeof query, "SELECT * FROM stg_users WHERE username = '%e'", pData[playerid][pName]);
+    mysql_format(forumdb, query, sizeof query, "SELECT * FROM stg_users INNER JOIN stg_userfields ON stg_users.uid = stg_userfields.ufid WHERE username = '%e'", pData[playerid][pName]);
     MySQL_TQueryInline(forumdb, using inline InitiatePlayerLogin, query);
     return 1;
 }
