@@ -24,6 +24,7 @@
 #define MAX_NAME (MAX_PLAYER_NAME + 1)
 #define MAX_PASS 500
 #define MAX_EMAIL 220
+#define MAX_DATETIME 20
 
 enum pInfo{
     pID,
@@ -36,14 +37,32 @@ enum pInfo{
     Float: pPos[4],
     pInterior,
     pVirtualWorld,
-    pGroup,
+    pEXP,
+    pMoney,
+    pEquippedGun,
+    pSkin,
+    pAdmin,
+    pKills,
+    pDeaths,
+    pPrisoned,
+    pCaught,
+    pSaves,
+    pVIP,
+    pVIPEXP[MAX_DATETIME],
 
+    pGroup,
     bool: pOnline,
     Cache: pCache
 }
 
 new 
     pData[MAX_PLAYERS][pInfo],
+
+    Float: spawnLoc[3][4] = {
+        {-1605.6788,719.5027,11.9920,180.7348},
+        {-2732.8354,-308.5785,7.1875,233.9780},
+        {-2584.2507,1362.2104,7.1935,42.6103}
+    },
 
     MySQL: forumdb,
     MySQL: sampdb;
