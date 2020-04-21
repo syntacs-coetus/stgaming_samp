@@ -5,8 +5,8 @@
 #define SCM SendClientMessage
 
 #define HOST "127.0.0.1"
-#define USER "root"
-#define PASS ""
+#define USER "stgaming"
+#define PASS "deJoker123"
 #define FORM "syntacs_gaming"
 #define SAMP "stgaming_samp"
 #include <a_mysql>
