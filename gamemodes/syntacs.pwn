@@ -235,6 +235,7 @@ CommandHelp(playerid, const cmd[], const cmdtext[]){
 
 YCMD:spawnveh(playerid, params[], help) 
 {
+    #pragma unused help
     new vehid, color[2];
     if(sscanf(params, "dD{-1}D{-1}", vehid, color[0], color[1])) return CommandHelp(playerid, "spawnveh", "[Vehicle ID] [Color 1(Optional)] [Color 2(Optional)]");
     if(vehid < 400 || vehid > 612) return SendClientMessage(playerid, -1, "INVALID VEHICLE ID");
@@ -243,6 +244,12 @@ YCMD:spawnveh(playerid, params[], help)
     GetPlayerFacingAngle(playerid, __pPos[3]);
     CreateVehicle(vehid, __pPos[0], __pPos[1], __pPos[2], __pPos[3], color[0], color[1], 0);
     SendClientMessage(playerid, -1, "Vehicle successfully spawned");
+    return 1;
+}
+
+YCMD:kill(playerid, params[], help){
+    #pragma unused params, help
+    SetPlayerHealth(playerid, 0);
     return 1;
 }
 
