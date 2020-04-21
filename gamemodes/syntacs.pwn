@@ -1,6 +1,7 @@
 #include <a_samp>
 #define FIXES_ServerVarMsg 0
 #include <fixes>
+#include <weapon-config>
 
 #define SCM SendClientMessage
 
@@ -19,6 +20,7 @@
 
 #include <samp_bcrypt>
 #include <sscanf2>
+
 
 #define MAX_PLAYER_LOOKSIE 25.0
 #define MAX_NAME (MAX_PLAYER_NAME + 1)
@@ -253,6 +255,10 @@ public OnGameModeInit(){
     UsePlayerPedAnims();
     SetNameTagDrawDistance(MAX_PLAYER_LOOKSIE);
     ShowNameTags(true);
+    // Weapon-Config Settings
+    SetVehiclePassengerDamage(true);
+    SetDisableSyncBugs(true);
+
     forumdb = ForumSecureConnect();
     sampdb = ServerSecureConnect();
     return 1;
@@ -334,12 +340,40 @@ public OnPlayerDisconnect(playerid, reason){
 }
 
 public OnPlayerDeath(playerid, killerid, reason){
+    if(pData[playerid][pOnline] == false){
+        TogglePlayerSpectating(playerid, FALSE);
+        TogglePlayerControllable(playerid, TRUE);
+        SpawnPlayerEx(playerid);
+        SCM(playerid, X11_BLACK, "I don't know why you are in the server but you are not deemed a player.");
+        SCM(playerid, X11_BLACK, "Whoever you are please leave, if you hacked your way through then this is a warning.");
+        SCM(playerid, X11_SNOW, "If not then sorry for the bug. I don't know why this happened either, unless a tool is used this shouldn't happen");
+        SCM(playerid, X11_SNOW, "Oh well! I'll kick you now, Come back again!");
+        defer DisconnectPlayer(playerid);
+    }
     return 1;
 }
 
 public OnPlayerStateChange(playerid, newstate, oldstate){
     if(newstate == oldstate) return 0;
     return 1;
+}
+
+public OnPlayerDamage(&playerid, &Float:amount, &issuerid, &weapon, &bodypart){
+    return 1;
+}
+
+public OnPlayerPrepareDeath(playerid, WC_CONST animlib[32], WC_CONST animname[32], &anim_lock, &respawn_time){
+    print("Dying!!!");
+    return 1;
+}
+
+public OnPlayerDeathFinished(playerid, bool: cancelable){
+    print("Alive!!!");
+    return 1;
+}
+
+public OnPlayerUpdate(playerid){
+    return 0;
 }
 
 //custom public
@@ -370,8 +404,7 @@ timer DisconnectPlayer[100](playerid){
     Kick(playerid);
 }
 
-timer __SetPlayerScoreBoard[100](playerid, experience){
-    pData[playerid][pEXP] += experience;
+timer __SetPlayerScoreBoard[100](playerid){
     switch(pData[playerid][pEXP]){
         case 0..50:{
             if(GetPlayerScore(playerid) != 1){

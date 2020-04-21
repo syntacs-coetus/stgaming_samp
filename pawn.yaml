@@ -15,3 +15,4 @@ dependencies:
 - Pottus/ColAndreas:1.5.0
 - Sreyas-Sreelal/samp-bcrypt:0.2.2
 - TheManyula/progress3D:v2.3.1
+- oscar-broman/samp-weapon-config
