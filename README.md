@@ -1,4 +1,4 @@
-[![sampctl](https://img.shields.io/badge/sampctl-sampstgaming-2f2f2f.svg?style=for-the-badge)](https://github.com/AtraXaz/stgaming_samp)
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z71MRHI)
 
 Note: If you are in affilation doesn't mean that you are safe from the government, with enough budget the police can pay up for information on a certain player. This budget will become a reputation for the affiliation.
 
