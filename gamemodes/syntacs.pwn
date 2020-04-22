@@ -1,4 +1,5 @@
 #include <a_samp>
+#include "..\syntacs_version.inc"
 
 // #define DEVELOPMENT
 
@@ -695,7 +696,9 @@ main() {
 
 public OnGameModeInit(){
 
-    SetGameModeText("v 0.0.1");
+    new string[10 + (11 * 3) + 1];
+    format(string, sizeof string, "v %d.%d.%d", SYNTACS_VERSION_MAJOR, SYNTACS_VERSION_MINOR, SYNTACS_VERSION_PATCH);
+    SetGameModeText(string);
 
     DisableInteriorEnterExits();
     EnableStuntBonusForAll(false);
