@@ -38,6 +38,8 @@
 #define MAX_DEATHPICKUP 10
 #define MAX_SERVHOSP 1
 #define MAX_SLOTS 12
+#define IMMUNITY_TIME 5
+#define DEATHTIMER_TIME 10
 
 enum pInfo{
     pID,
@@ -48,6 +50,8 @@ enum pInfo{
     pReputation,
     Float: pCP,
     Float: pPos[4],
+    Float: pHP,
+    Float: pArmour,
     pInterior,
     pVirtualWorld,
     pEXP,
@@ -77,9 +81,10 @@ new
     pData[MAX_PLAYERS][pInfo],
     pWepData[MAX_PLAYERS][MAX_SLOTS][pWeaponInfo],
 
+    bool: pSpawnImmune[MAX_PLAYERS],
     bool: pDyingDamageImmune[MAX_PLAYERS],
     bool: isDying[MAX_PLAYERS],
-    bool: isCritical[MAX_PLAYERS],
+    // bool: isCritical[MAX_PLAYERS],
 
     STREAMER_TAG_PICKUP: deathPickup[MAX_DEATHPICKUP],
     droppedWeapon[MAX_DEATHPICKUP][MAX_SLOTS],
@@ -104,6 +109,7 @@ new
     MySQL: sampdb;
 
 __WeponDropSingleClip(playerid, wepid, wepmo){
+    #pragma unused playerid, wepid
     new dropmo = 30;
     if(wepmo < dropmo){
         return wepmo;
@@ -111,12 +117,12 @@ __WeponDropSingleClip(playerid, wepid, wepmo){
     return dropmo;
 }
 
-__GetPlayerWeapons(playerid){
-    for(i = 0, j = MAX_SLOTS; i < j; i++){
-        GetPlayerWeaponData(playerid, i, pWepData[playerid][i][pWepID], pWepData[playerid][i][pWepAmmo]);
-    }
-    return 1;
-}
+// __GetPlayerWeapons(playerid){
+//     for(i = 0, j = MAX_SLOTS; i < j; i++){
+//         GetPlayerWeaponData(playerid, i, pWepData[playerid][i][pWepID], pWepData[playerid][i][pWepAmmo]);
+//     }
+//     return 1;
+// }
 
 __GivePlayerWeapons(playerid, weaponid, ammo){
     new wepSlot;
@@ -174,6 +180,7 @@ __GivePlayerWeapons(playerid, weaponid, ammo){
             wepSlot = 12;
         }
     }
+    #pragma unused wepSlot
     GivePlayerWeapon(playerid, weaponid, ammo);
     return 1;
 }
@@ -335,6 +342,8 @@ SpawnPlayerEx(playerid){
                 SetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
                 SetPlayerVirtualWorld(playerid, pData[playerid][pInterior]);
                 SetPlayerInterior(playerid, pData[playerid][pVirtualWorld]);
+                pSpawnImmune[playerid] = true;
+                defer __RemoveImmunity(playerid);
                 defer __GivePlayerMoney(playerid);
                 defer __SetPlayerSkin(playerid);
                 defer __SetPlayerScoreBoard(playerid);
@@ -373,6 +382,9 @@ YCMD:giveplayerweapon(playerid, params[], help){
     new targetid, wepid, wepmo;
     if(sscanf(params, "ddd", targetid, wepid, wepmo)) return CommandHelp(playerid, "giveplayerweapon", "[Player ID / Part of Name] [Weapon ID] [Ammo]");
     __GivePlayerWeapons(targetid, wepid, wepmo);
+    new string[19 + 32];
+    formatex(string, sizeof string, "You have given %W", wepid);
+    SCM(playerid, X11_SNOW, string);
     return 1;
 }
 
@@ -485,6 +497,8 @@ public OnPlayerDisconnect(playerid, reason){
             pData[playerid][pInterior] = GetPlayerInterior(playerid);
             pData[playerid][pVirtualWorld] = GetPlayerVirtualWorld(playerid);
             pData[playerid][pEquippedGun] = GetPlayerWeapon(playerid);
+            GetPlayerHealth(playerid, pData[playerid][pHP]);
+            GetPlayerArmour(playerid, pData[playerid][pArmour]);
             inline SaveDisconnect(){
                 __GetPlayerWeapons(playerid);
                 static const empty_player[pInfo];
@@ -503,12 +517,13 @@ public OnPlayerStateChange(playerid, newstate, oldstate){
 }
 
 public OnPlayerDamage(&playerid, &Float:amount, &issuerid, &weapon, &bodypart){
-    if(pDyingDamageImmune[playerid]) return 0;
+    if(pDyingDamageImmune[playerid] == true) return 0;
+    if(pSpawnImmune[playerid] == true) return 0;
     return 1;
 }
 
 public OnPlayerPrepareDeath(playerid, WC_CONST animlib[32], WC_CONST animname[32], &anim_lock, &respawn_time){
-    if(pData[playerid][pOnline]){
+    if(pData[playerid][pOnline] == true){
         if(isDying[playerid] == false){
             pDyingDamageImmune[playerid] = true;
         }
@@ -532,9 +547,14 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
             defer __GivePlayerMoney(playerid);
             __pickid = __GetEmptyDeathPickup();
             __medid = __GetHospitalLocation(playerid);
+            // Respawn Player
             SetPlayerPos(playerid, medLoc[__medid][0], medLoc[__medid][1], medLoc[__medid][2]);
             SetPlayerInterior(playerid, 0);
             SetPlayerVirtualWorld(playerid, 0);
+            // Removes weapons during spawn :D
+            SetPlayerArmedWeapon(playerid, 0);
+            pSpawnImmune[playerid] = true;
+            defer __RemoveImmunity(playerid);
             deathPickup[__pickid] = CreateDynamicPickup(1575, 1, tmpPos[0], tmpPos[1] + 0.5, tmpPos[2], tmpWorld, tmpInt);
             for(new i = 0, j = MAX_SLOTS; i < j; i++){
                 if(i != 0 || i != 1 || i != 10 || i != 12){
@@ -613,6 +633,10 @@ public OnPlayerPickUpDynamicPickup(playerid, STREAMER_TAG_PICKUP:pickupid){
     return 1;
 }
 
+public OnPlayerKeyStateChange(playerid, newkeys, oldkeys){
+    return 1;
+}
+
 public OnPlayerUpdate(playerid){
     return 0;
 }
@@ -641,7 +665,13 @@ public VerifyUserAccount(playerid, bool:success){
     }
 }
 
-timer removeDeatchPickup[(1000 * 10)](pickid){
+timer __RemoveImmunity[1000 * IMMUNITY_TIME](playerid){
+    if(pSpawnImmune[playerid] == true){
+        pSpawnImmune[playerid] = false;
+    }
+}
+
+timer removeDeatchPickup[(1000 * DEATHTIMER_TIME)](pickid){
     DestroyDynamicPickup(deathPickup[pickid]);
     deathPickup[pickid] = STREAMER_TAG_PICKUP: -1;
     moneyDropped[pickid] = 0;
