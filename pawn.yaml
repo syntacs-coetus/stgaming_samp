@@ -1,7 +1,7 @@
 dependencymeta:
- site: stgaming.com
- user: SynTacs
- repo: syntacs
+ site: www.stgaming.com
+ user: STGPrince
+ repo: stgaming_samp
 entry: gamemodes/syntacs.pwn
 output: gamemodes/syntacs.amx
 dependencies:
@@ -12,9 +12,17 @@ dependencies:
 - pawn-lang/YSI-Includes
 - maddinat0r/sscanf:v2.8.3
 - samp-incognito/samp-streamer-plugin:v2.9.4
-- Pottus/ColAndreas:1.5.0
 - Sreyas-Sreelal/samp-bcrypt:0.2.2
 - TheManyula/progress3D:v2.3.1
 - oscar-broman/SKY:2.3.0
 - oscar-broman/samp-weapon-config
 - Southclaws/formatex
+- ziggi/FCNPC:v2.0.0-rc.7
+runtime:
+  maxnpc: 10
+  hostname: "STGaming"
+  rcon_password: deJoker123
+  mapname: San Fierro
+  weburl: www.stgaming.com
+  language: English
+  
