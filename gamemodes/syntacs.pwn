@@ -31,6 +31,7 @@
 #include <sscanf2>
 #include <streamer>
 #include <formatex>
+#include <MenuStore>
 
 #define MIN_PLAYER_LOOKSIE 5.0
 #define MAX_PLAYER_LOOKSIE 25.0
@@ -511,6 +512,42 @@ CommandError(const playerid, const text[]){
     return 1;
 }
 
+/* MENU ITEMS */
+
+Store:ItemShop(playerid, response, itemid, modelid, price, amount, itemname[]){
+    if(!response) return true;
+    if(pData[playerid][pMoney] < price) return SCM(playerid, X11_FIREBRICK, "You do not have enough cash"), true;
+    new string[128];
+    switch(itemid){
+        case 1:{
+            if(antiCrime[playerid] == true) return SCM(playerid, X11_FIREBRICK, "Your anti-crime detector is still active!"), true;
+            antiCrimeTime[playerid] = 1800;
+            antiCrime[playerid] = true;
+            antiCrimeTimer[playerid] = repeat __AntiCrimeCountdown(playerid);
+            pData[playerid][pMoney] -= price;
+            
+            formatex(string, sizeof string, "You have bought an %s", itemname);
+            SCM(playerid, X11_GREEN, string);
+            defer __GivePlayerMoney(playerid);
+            MenuStore_Close(playerid);
+        }
+        case 2:{
+            new wepid = __GetWeaponID(modelid);
+            __GivePlayerWeapons(playerid, wepid, 30 * amount);
+            pData[playerid][pMoney] -= price;
+            defer __GivePlayerMoney(playerid);
+            MenuStore_Close(playerid);
+        }
+    }
+    return 1;
+}
+
+YCMD:buy(playerid, params[], help){
+    MenuStore_AddItem(playerid, 1, 19513, "Anti-Crime Kit", 2500, "A kit that avoids the detection of cops for 30 mins");
+    MenuStore_AddItem(playerid, 2, 355, "AK-47", 300, "A Russian made Assualt Rifle", .zoom = 1.75);
+    MenuStore_Show(playerid, ItemShop, "Item Shop");
+    return 1;
+}
 YCMD:setplayerwanted(playerid, params[], help){
     #pragma unused help
     new targetid, level;
