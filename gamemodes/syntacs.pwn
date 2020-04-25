@@ -1,15 +1,11 @@
 #include <a_samp>
 #include "..\syntacs_version.inc"
 
-// #define DEVELOPMENT
-
-
-
 #define FIXES_ServerVarMsg 0
 #include <fixes>
 #include <weapon-config>
 
-
+// Native Shortcuts
 #define SCM SendClientMessage
 
 #define HOST "127.0.0.1"
@@ -35,7 +31,6 @@
 #include <sscanf2>
 #include <streamer>
 #include <formatex>
-
 
 #define MIN_PLAYER_LOOKSIE 5.0
 #define MAX_PLAYER_LOOKSIE 25.0
@@ -70,6 +65,7 @@ enum pInfo{
     pMoney,
     pEquippedGun,
     pSkin,
+    pKillPoints,
     pKills,
     pDeaths,
     pPrisoned,
@@ -96,6 +92,10 @@ enum pWeaponInfo{
 new 
     pData[MAX_PLAYERS][pInfo],
     pWepData[MAX_PLAYERS][MAX_SLOTS][pWeaponInfo],
+
+    killerID[MAX_PLAYERS],
+
+    Timer: wantedTimer[MAX_PLAYERS],
 
     bool: pSpawnImmune[MAX_PLAYERS],
     bool: pDyingDamageImmune[MAX_PLAYERS],
@@ -257,6 +257,7 @@ __InitializeCommands(){
     __SetAdminCommand("admincommands", 1);
     __SetAdminCommand("giveplayerhealth", 3);
     __SetAdminCommand("giveplayerarmour", 3);
+    __SetAdminCommand("setplayerwanted", 1);
     __SetGlobalCommand("kill");
     __SetGlobalCommand("adminsonline");
     return 1;
@@ -353,6 +354,7 @@ SpawnPlayerEx(playerid){
         pData[playerid][pCache] = MYSQL_INVALID_CACHE;
         inline getCharDet(){
             if(cache_num_rows() != 0){
+                cache_get_value_int(0, "killerpoints", pData[playerid][pKillPoints]);
                 cache_get_value_float(0, "posx", pData[playerid][pPos][0]);
                 cache_get_value_float(0, "posy", pData[playerid][pPos][1]);
                 cache_get_value_float(0, "posz", pData[playerid][pPos][2]);
@@ -455,6 +457,9 @@ SpawnPlayerEx(playerid){
                         defer __GivePlayerHealth(playerid);
                         defer __GivePlayerArmour(playerid);
                         Group_SetPlayer(OnlinePlayers, playerid, true);
+                        if(pData[playerid][pKillPoints] !=0){
+                            defer __setPlayerWantedLevel(playerid);
+                        }
 
                         // After realizing that Group_GetPlayer does not work OnPlayerDisconnect I will have to make an adjustment
                         // This code will do that
@@ -503,6 +508,16 @@ CommandPlayerCheck(playerid, targetid){
 
 CommandError(const playerid, const text[]){
     SCM(playerid, X11_FIREBRICK, text);
+    return 1;
+}
+
+YCMD:setplayerwanted(playerid, params[], help){
+    #pragma unused help
+    new targetid, level;
+    if(sscanf(params, "dd", targetid, level)) return CommandHelp(playerid, "setplayerwanted", "[Player ID / Part of Name] [Level]");
+    if(CommandPlayerCheck(playerid, targetid) == 0 ) return 1;
+    pData[targetid][pKillPoints]+=1;
+    defer __setPlayerWantedLevel(playerid);
     return 1;
 }
 
@@ -708,6 +723,7 @@ public OnGameModeInit(){
     // Weapon-Config Settings
     SetVehiclePassengerDamage(true);
     SetDisableSyncBugs(true);
+    ShowPlayerMarkers(PLAYER_MARKERS_MODE_OFF);
 
     forumdb = ForumSecureConnect();
     sampdb = ServerSecureConnect();
@@ -781,7 +797,6 @@ public OnPlayerDisconnect(playerid, reason){
     #pragma unused reason
     // This will be temporary until I see that Group_GetPlayer has been fixed by the creator/maintainer
     // Ones this data provided here will start giving 1's and not 0's then it means isOnline will be removed for good.
-    printf("%d", Group_GetPlayer(OnlinePlayers, playerid));
     if(Group_GetPlayer(OnlinePlayers, playerid) == true || isOnline[playerid] == true){
         // Removing owner level
         if(Group_GetPlayer(pOwners, playerid) == true){
@@ -795,7 +810,7 @@ public OnPlayerDisconnect(playerid, reason){
             Delete3DTextLabel(pData[playerid][pTag]);
             pData[playerid][pTag] = INVALID_3DTEXT_ID;
         }
-        new query[116 + (15 * 4) + (11 * 4)];
+        new query[163 + (15 * 4) + (11 * 4)];
         GetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
         GetPlayerFacingAngle(playerid, pData[playerid][pPos][3]);
         pData[playerid][pInterior] = GetPlayerInterior(playerid);
@@ -809,7 +824,7 @@ public OnPlayerDisconnect(playerid, reason){
             pData[playerid] = empty_player;
             Group_SetPlayer(OnlinePlayers, playerid, false);
         }
-        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET posx = %f, posy = %f, posz = %f, posa = %f, phealth = %f, parmour = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pHP], pData[playerid][pArmour], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
+        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET killerpoints = %d, posx = %f, posy = %f, posz = %f, posa = %f, phealth = %f, parmour = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pKillPoints], pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pHP], pData[playerid][pArmour], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
         MySQL_TQueryInline(sampdb, using inline SaveDisconnect, query);
     }
     return 1;
@@ -823,6 +838,11 @@ public OnPlayerStateChange(playerid, newstate, oldstate){
 public OnPlayerDamage(&playerid, &Float:amount, &issuerid, &weapon, &bodypart){
     if(pDyingDamageImmune[playerid] == true) return 0;
     if(pSpawnImmune[playerid] == true) return 0;
+    if(issuerid != INVALID_PLAYER_ID){
+        if(isDying[playerid] == true){
+            killerID[playerid] = issuerid;
+        }
+    }
     return 1;
 }
 
@@ -839,6 +859,8 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
     if(Group_GetPlayer(OnlinePlayers, playerid) == true){
         if(isDying[playerid] == true){
             new mDrop = 0,Float: tmpPos[3], tmpInt, tmpWorld, __pickid, __medid;
+            pData[playerid][pKillPoints] += 1;
+            defer __setPlayerWantedLevel(killerID[playerid]);
             GetPlayerPos(playerid, tmpPos[0], tmpPos[1], tmpPos[2]);
             tmpInt = GetPlayerInterior(playerid);
             tmpWorld = GetPlayerVirtualWorld(playerid);
@@ -1021,6 +1043,146 @@ public VerifyUserAccount(playerid, bool:success){
     Although it really doesn't do much, It's just a force of habit plus it's
     Just a 100 ms differential
 */
+
+timer __DecreaseWantedLevel[(1000 * 60) * 3](playerid){
+    pData[playerid][pKillPoints]--;
+    switch(pData[playerid][pKillPoints]){
+        case 1..10:{
+            if(GetPlayerWantedLevel(playerid) > 1){
+                SetPlayerWantedLevel(playerid, 1);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel(playerid);
+            }
+        }
+        case 11..25:{
+            if(GetPlayerWantedLevel(playerid) > 2){
+                SetPlayerWantedLevel(playerid, 2);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*5](playerid);
+            }
+        }
+        case 26..50:{
+            if(GetPlayerWantedLevel(playerid) > 3){
+                SetPlayerWantedLevel(playerid, 3);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*10](playerid);
+            }
+        }
+        case 51..100:{
+            if(GetPlayerWantedLevel(playerid) > 4){
+                SetPlayerWantedLevel(playerid, 4);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*15](playerid);
+            }
+        }
+        case 101..150:{
+            if(GetPlayerWantedLevel(playerid) > 5){
+                SetPlayerWantedLevel(playerid, 5);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*20](playerid);
+            }
+        }
+        case 151..250:{
+            if(GetPlayerWantedLevel(playerid) > 6){
+                SetPlayerWantedLevel(playerid, 6);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*30](playerid);
+            }
+        }
+    }
+    if(pData[playerid][pKillPoints] <= 0){
+        pData[playerid][pKillPoints] = 0;
+        stop wantedTimer[playerid];
+        wantedTimer[playerid] = Timer:-1;
+        SetPlayerWantedLevel(playerid, 0);
+    }
+}
+
+timer __setPlayerWantedLevel[100](playerid){
+    if(pData[playerid][pKillPoints] > 250){
+        pData[playerid][pKillPoints] = 250;
+    }
+    switch(pData[playerid][pKillPoints]){
+        case 1..10:{
+            if(GetPlayerWantedLevel(playerid) < 1){
+                SetPlayerWantedLevel(playerid, 1);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel(playerid);
+            }
+        }
+        case 11..25:{
+            if(GetPlayerWantedLevel(playerid) < 2){
+                SetPlayerWantedLevel(playerid, 2);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*5](playerid);
+            }
+        }
+        case 26..50:{
+            if(GetPlayerWantedLevel(playerid) < 3){
+                SetPlayerWantedLevel(playerid, 3);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*10](playerid);
+            }
+        }
+        case 51..100:{
+            if(GetPlayerWantedLevel(playerid) < 4){
+                SetPlayerWantedLevel(playerid, 4);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*15](playerid);
+            }
+        }
+        case 101..150:{
+            if(GetPlayerWantedLevel(playerid) < 5){
+                SetPlayerWantedLevel(playerid, 5);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*20](playerid);
+            }
+        }
+        case 151..250:{
+            if(GetPlayerWantedLevel(playerid) < 6){
+                SetPlayerWantedLevel(playerid, 6);
+                if(wantedTimer[playerid] != Timer:-1){
+                    stop wantedTimer[playerid];
+                    wantedTimer[playerid] = Timer:-1;
+                }
+                wantedTimer[playerid] = repeat __DecreaseWantedLevel[(1000 * 60)*30](playerid);
+            }
+        }
+    }
+}
 
 timer __GivePlayerArmour[100](playerid){
     SetPlayerArmour(playerid, pData[playerid][pArmour]);
