@@ -48,6 +48,8 @@
 // Administrative Definition
 #define MIN_ADMIN_LEVEL 1
 #define MAX_ADMIN_LEVEL 6
+#define MIN_FACTION_LEVEL 1
+#define MAX_FACTION_LEVEL 6
 
 enum pInfo{
     pID,
@@ -95,9 +97,12 @@ new
     pWepData[MAX_PLAYERS][MAX_SLOTS][pWeaponInfo],
 
     killerID[MAX_PLAYERS],
+    antiCrimeTime[MAX_PLAYERS],
 
     Timer: wantedTimer[MAX_PLAYERS],
+    Timer: antiCrimeTimer[MAX_PLAYERS],
 
+    bool: antiCrime[MAX_PLAYERS],
     bool: pSpawnImmune[MAX_PLAYERS],
     bool: pDyingDamageImmune[MAX_PLAYERS],
     bool: isDying[MAX_PLAYERS],
@@ -129,7 +134,9 @@ new
     Group: OnlinePlayers,
     Group: pOwners,
     Group: AdminList,
-    Group: pAdmins[MAX_ADMIN_LEVEL + MIN_ADMIN_LEVEL]
+    Group: pAdmins[MAX_ADMIN_LEVEL + MIN_ADMIN_LEVEL],
+    Group: pMedics[MAX_ADMIN_LEVEL + MIN_ADMIN_LEVEL],
+    Group: MedicList
 
     ;
 
@@ -141,44 +148,101 @@ stock const ModeratorNames[][] = {
          "Assistant Head Moderator",
          "Head Moderator"
 };
+stock const ModeratorColors[] = {
+    X11_SPRING_GREEN_4,
+    X11_YELLOW_4,
+    X11_INDIAN_RED_2,
+    X11_DEEP_PINK_2,
+    X11_DARK_CYAN,
+    X11_DARK_RED
+};
+
 stock const ModeratorNicks[][] = {
     "JM", "GM", "SM", "MM", "AHM", "HM"
 };
 
-__SetAdminCommand(const command[], level){
+stock const MedicNames[][] = {
+         "Medic in Training",
+         "Trained Medic",
+         "Junior Medic",
+         "Senior Medic",
+         "Assistant Head Medic",
+         "Head Medic"
+};
+
+stock const MedicColors[] = {
+    X11_PINK_1,
+    X11_LIGHT_PINK_1,
+    X11_PALE_VIOLET_RED_1,
+    X11_MAROON_1,
+    X11_VIOLET_RED_1,
+    X11_VIOLET_RED_2
+};
+
+__SetCommands(const command[], ctype, level = 0){
     new id = Command_GetID(command);
-    Group_SetGlobalCommand(id, false);
-    if(level >= MIN_ADMIN_LEVEL){
-        new cl = level;
-        while(cl != MAX_ADMIN_LEVEL){
-            new Group: group = pAdmins[cl];
-            Group_SetCommand(group, id, true);
-            cl++;
+    switch(ctype){
+        case 1:{
+            Group_SetCommand(OnlinePlayers, id, true);
+        }
+        case 2:{
+            if(level >= MIN_ADMIN_LEVEL){
+                new cl = level;
+                while(cl != MAX_ADMIN_LEVEL){
+                    new Group: group = pAdmins[cl];
+                    Group_SetCommand(group, id, true);
+                    cl++;
+                }
+            }
+            // All admin commands can be used by the owner/s
+            Group_SetCommand(pOwners, id, true);
+        }
+        case 3:{
+            if(level >= MIN_FACTION_LEVEL){
+                new cl = level;
+                while(cl != MAX_FACTION_LEVEL){
+                    new Group: group = pMedics[cl];
+                    Group_SetCommand(group, id, true);
+                    cl++;
+                }
+            }
+            // All admin commands can be used by the owner/s
+            Group_SetCommand(pOwners, id, true);
         }
     }
-    // All admin commands can be used by the owner/s
-    Group_SetCommand(pOwners, id, true);
+}
+
+__InitializeOnline(){
+    OnlinePlayers = Group_Create("Online Players");
+    
+    __SetCommands("kill", 1);
+    __SetCommands("adminsonline", 1);
+    __SetCommands("buy", 1);
+}
+
+/* INITIALIZE MEDICS */
+
+__InitializeMedics(){
+    MedicList = Group_Create("Medics");
+    for(new i = MIN_FACTION_LEVEL, j = MAX_FACTION_LEVEL; i < j; i++){
+        pMedics[i] = Group_Create(MedicNames[i - 1]);
+        Group_SetColor(pAdmins[i], MedicColors[i - 1]);
+    }
     return 1;
 }
 
-__WeponDropSingleClip(playerid, wepid, wepmo){
-    #pragma unused playerid, wepid
-    new dropmo = 30;
-    if(wepmo < dropmo){
-        return wepmo;
+__GetWeaponID(modelid){
+    new wepid = 0;
+    switch(modelid){
+        case 355:{
+            wepid = 30;
+        }
     }
-    return dropmo;
+    return wepid;
 }
 
-// __GetPlayerWeapons(playerid){
-//     for(i = 0, j = MAX_SLOTS; i < j; i++){
-//         GetPlayerWeaponData(playerid, i, pWepData[playerid][i][pWepID], pWepData[playerid][i][pWepAmmo]);
-//     }
-//     return 1;
-// }
-
-__GivePlayerWeapons(playerid, weaponid, ammo){
-    new wepSlot;
+__GetWeaponSlot(weaponid){
+    new wepSlot = -1;
     switch(weaponid){
         // slot 0
         case 1..2:{
@@ -233,39 +297,52 @@ __GivePlayerWeapons(playerid, weaponid, ammo){
             wepSlot = 12;
         }
     }
-    #pragma unused wepSlot
+    return wepSlot;
+}
+
+__WeponDropSingleClip(playerid, wepid, wepmo){
+    #pragma unused playerid, wepid
+    new dropmo = 30;
+    if(wepmo < dropmo){
+        return wepmo;
+    }
+    return dropmo;
+}
+
+__GetPlayerWeapons(playerid){
+    for(new i = 0, j = 12; i < j; i++){
+        GetPlayerWeaponData(playerid, i, pWepData[playerid][i][pWepID], pWepData[playerid][i][pWepAmmo]);
+    }
+    return 1;
+}
+
+__GivePlayerWeapons(playerid, weaponid, ammo){
+    new wepSlot = __GetWeaponSlot(weaponid);
+    if(pWepData[playerid][wepSlot][pWepID] != weaponid)
+        pWepData[playerid][wepSlot][pWepAmmo] = 0;
+    pWepData[playerid][wepSlot][pWepID] = weaponid;
+    pWepData[playerid][wepSlot][pWepAmmo] += ammo;
     GivePlayerWeapon(playerid, weaponid, ammo);
     return 1;
 }
 
-/* INITIALIZE COMMANDS */
+/* INITIALIZE ADMINS */
 
-__InitializeCommands(){
-    new string[15 + 11];
-    Command_SetDeniedReturn(true);
-    Group_SetGlobalCommandDefault(false);
-    OnlinePlayers = Group_Create("Online Players");
+__InitializeAdmins(){
     AdminList = Group_Create("Admins");
     pOwners = Group_Create("Owners");
     Group_SetColor(pOwners, X11_PURPLE_4);
     for(new i = MIN_ADMIN_LEVEL, j = MAX_ADMIN_LEVEL; i <= j; i++){
-        format(string, sizeof string, "Admin Level %d", i);
-        pAdmins[i] = Group_Create(string);
+        pAdmins[i] = Group_Create(ModeratorNames[i - 1]);
+        Group_SetColor(pAdmins[i], ModeratorColors[i - 1]);
     }
-    __SetAdminCommand("spawnveh", 2);
-    __SetAdminCommand("giveplayerweapon", 2);
-    __SetAdminCommand("giveplayermoney", 3);
-    __SetAdminCommand("admincommands", 1);
-    __SetAdminCommand("giveplayerhealth", 3);
-    __SetAdminCommand("giveplayerarmour", 3);
-    __SetAdminCommand("setplayerwanted", 1);
-    __SetGlobalCommand("kill");
-    __SetGlobalCommand("adminsonline");
-    return 1;
-}
-
-__SetGlobalCommand(const command[]){
-    Group_SetGlobalCommand(Command_GetID(command), true);
+    __SetCommands("spawnveh", 2, 2);
+    __SetCommands("giveplayerweapon", 2, 2);
+    __SetCommands("giveplayermoney", 2, 3);
+    __SetCommands("admincommands", 2, 1);
+    __SetCommands("giveplayerhealth", 2, 3);
+    __SetCommands("giveplayerarmour", 2, 3);
+    __SetCommands("setplayerwanted", 2, 1);
     return 1;
 }
 
@@ -443,6 +520,15 @@ SpawnPlayerEx(playerid){
                         if(cache_num_rows() != 0){
                             cache_get_value_int(0, "group", pData[playerid][pDepartment]);
                             cache_get_value_int(0, "rank", pData[playerid][pRank]);
+                            switch(pData[playerid][pDepartment]){
+                                case 2:{
+                                    Group_SetPlayer(pMedics[pData[playerid][pRank]], playerid, true);
+                                    if(pData[playerid][pAdmins] == 0){
+                                        SetPlayerColor(playerid, Group_GetColor(pMedics[pData[playerid][pRank]]));
+                                    }
+                                    Group_SetPlayer(MedicList, playerid, true);
+                                }
+                            }
                         }
 
                         SetCameraBehindPlayer(playerid);
@@ -548,11 +634,18 @@ YCMD:buy(playerid, params[], help){
     MenuStore_Show(playerid, ItemShop, "Item Shop");
     return 1;
 }
+
+YCMD:setplayerfaction(playerid, params[], help){
+    #pragma unused help
+    return 1;
+}
+
 YCMD:setplayerwanted(playerid, params[], help){
     #pragma unused help
     new targetid, level;
-    if(sscanf(params, "dd", targetid, level)) return CommandHelp(playerid, "setplayerwanted", "[Player ID / Part of Name] [Level]");
+    if(sscanf(params, "dd", targetid, level)) return CommandHelp(playerid, "setplayerwanted", "[Player ID / Part of Name] [Level]"), 1;
     if(CommandPlayerCheck(playerid, targetid) == 0 ) return 1;
+    if(antiCrime[playerid] == true) return SCM(playerid, X11_DARK_GOLDENROD_2, "This player is using an anti-crime device"), 1;
     pData[targetid][pKillPoints]+=1;
     defer __setPlayerWantedLevel(playerid);
     return 1;
@@ -768,8 +861,13 @@ public OnGameModeInit(){
     for(new i = 0, j = MAX_DEATHPICKUP; i < j; i++){
         deathPickup[i] = STREAMER_TAG_PICKUP: -1;
     }
+    
+    Command_SetDeniedReturn(true);
+    Group_SetGlobalCommandDefault(false);
+    __InitializeOnline();
+    __InitializeAdmins();
+    __InitializeMedics();
 
-    __InitializeCommands();
     return 1;
 }
 
@@ -814,7 +912,7 @@ public OnPlayerConnect(playerid){
                     defer DisconnectPlayer(playerid);
                 }
             }
-            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server, type in your password to enter into the game.", "Login", "Exit");
+            Dialog_ShowCallback(playerid, using inline doLogin, DIALOG_STYLE_PASSWORD, "Login", "Welcome to the server!\nYou are already registered in the forums", "Login", "Exit");
         }else{
             SCM(playerid, X11_DARK_GOLDENROD_2, "You are not registered on the forums. Please try again.");
             if(cache_is_valid(pData[playerid][pCache]) || pData[playerid][pCache] != MYSQL_INVALID_CACHE){
@@ -836,16 +934,26 @@ public OnPlayerDisconnect(playerid, reason){
     // Ones this data provided here will start giving 1's and not 0's then it means isOnline will be removed for good.
     if(Group_GetPlayer(OnlinePlayers, playerid) == true || isOnline[playerid] == true){
         // Removing owner level
-        if(Group_GetPlayer(pOwners, playerid) == true){
+        if(Group_GetPlayer(pOwners, playerid) == true || pData[playerid][pAdmin] == 99){
             Group_SetPlayer(pOwners, playerid, false);
+            Group_SetPlayer(AdminList, playerid, false);
+            pData[playerid][pAdmin] = 0;
         }
         // Removing administrative level
-        if(pData[playerid][pAdmin] != 0 && pData[playerid][pAdmin] <= 6 && Group_GetPlayer(pAdmins[pData[playerid][pAdmin]], playerid) == true){
+        if((pData[playerid][pAdmin] != 0 && pData[playerid][pAdmin] <= 6) || Group_GetPlayer(pAdmins[pData[playerid][pAdmin]], playerid) == true){
             Group_SetPlayer(pAdmins[pData[playerid][pAdmin]], playerid, false);
+            Group_SetPlayer(AdminList, playerid, false);
+            pData[playerid][pAdmin] = 0;
         }
         if(pData[playerid][pTag] != INVALID_3DTEXT_ID){
             Delete3DTextLabel(pData[playerid][pTag]);
             pData[playerid][pTag] = INVALID_3DTEXT_ID;
+        }
+        if(Group_GetPlayer(MedicList, playerid) == true || pData[playerid][pDepartment] == 2){
+            Group_SetPlayer(MedicList, playerid, false);
+            Group_SetPlayer(pMedics[pData[playerid][pRank]], playerid, false);
+            pData[playerid][pDepartment] = 0;
+            pData[playerid][pRank] = 0;
         }
         new query[163 + (15 * 4) + (11 * 4)];
         GetPlayerPos(playerid, pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2]);
@@ -856,7 +964,7 @@ public OnPlayerDisconnect(playerid, reason){
         GetPlayerHealth(playerid, pData[playerid][pHP]);
         GetPlayerArmour(playerid, pData[playerid][pArmour]);
         inline SaveDisconnect(){
-            // __GetPlayerWeapons(playerid);
+            __GetPlayerWeapons(playerid);
             static const empty_player[pInfo];
             pData[playerid] = empty_player;
             Group_SetPlayer(OnlinePlayers, playerid, false);
@@ -896,8 +1004,10 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
     if(Group_GetPlayer(OnlinePlayers, playerid) == true){
         if(isDying[playerid] == true){
             new mDrop = 0,Float: tmpPos[3], tmpInt, tmpWorld, __pickid, __medid;
-            pData[playerid][pKillPoints] += 1;
-            defer __setPlayerWantedLevel(killerID[playerid]);
+            if(antiCrime[killerID[playerid]] != true){
+                pData[killerID[playerid]][pKillPoints] += 1;
+                defer __setPlayerWantedLevel(killerID[playerid]);
+            }
             GetPlayerPos(playerid, tmpPos[0], tmpPos[1], tmpPos[2]);
             tmpInt = GetPlayerInterior(playerid);
             tmpWorld = GetPlayerVirtualWorld(playerid);
@@ -938,10 +1048,17 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
             defer __GivePlayerArmour(playerid);
             defer __GivePlayerHealth(playerid);
             isDying[playerid] = false;
+            if(antiCrime[playerid] == true){
+                stop antiCrimeTimer[playerid];
+                antiCrime[playerid] = false;
+            }
         }else{
             isDying[playerid] = true;
+            pData[playerid][pKillPoints] = 0;
+            defer __setPlayerWantedLevel(playerid);
             if(isDying[playerid] == true && pDyingDamageImmune[playerid] == true){
                 GameTextForPlayer(playerid, "~y~You are dying!~n~Medics have been alerted of your location!", 3000, 3);
+                foreach()
                 pDyingDamageImmune[playerid] = false;
             }
         }
@@ -1042,6 +1159,20 @@ public OnPlayerText(playerid, text[]){
     return 0;
 }
 
+public OnPlayerWeaponShot(playerid, weaponid, hittype, hitid, Float:fX, Float:fY, Float:fZ){
+    if(playerid != INVALID_PLAYER_ID){
+        new slot = __GetWeaponSlot(weaponid);
+        if(slot != 0 || slot != 1){
+            pWepData[playerid][slot][pWepAmmo] -= 1;
+            if(pWepData[playerid][slot][pWepAmmo] <= 0){
+                pWepData[playerid][slot][pWepID] = 0;
+                pWepData[playerid][slot][pWepAmmo] = 0;
+            }
+        }
+    }
+    return 1;
+}
+
 public OnPlayerUpdate(playerid){
     return 0;
 }
@@ -1080,6 +1211,14 @@ public VerifyUserAccount(playerid, bool:success){
     Although it really doesn't do much, It's just a force of habit plus it's
     Just a 100 ms differential
 */
+
+timer __AntiCrimeCountdown[1000](playerid){
+    antiCrimeTime[playerid]--;
+    if(antiCrimeTime[playerid] <= 0){
+        antiCrime[playerid] = false;
+        stop antiCrimeTime[playerid];
+    }
+}
 
 timer __DecreaseWantedLevel[(1000 * 60) * 3](playerid){
     pData[playerid][pKillPoints]--;
