@@ -17,7 +17,6 @@ dependencies:
 - oscar-broman/SKY:2.3.0
 - oscar-broman/samp-weapon-config
 - Southclaws/formatex
-- ziggi/FCNPC:v2.0.0-rc.7
 runtime:
   maxnpc: 10
   hostname: "STGaming"
@@ -25,4 +24,3 @@ runtime:
   mapname: San Fierro
   weburl: www.stgaming.com
   language: English
-  
