@@ -523,7 +523,7 @@ SpawnPlayerEx(playerid){
                             switch(pData[playerid][pDepartment]){
                                 case 2:{
                                     Group_SetPlayer(pMedics[pData[playerid][pRank]], playerid, true);
-                                    if(pData[playerid][pAdmins] == 0){
+                                    if(pData[playerid][pAdmin] == 0){
                                         SetPlayerColor(playerid, Group_GetColor(pMedics[pData[playerid][pRank]]));
                                     }
                                     Group_SetPlayer(MedicList, playerid, true);
@@ -615,14 +615,12 @@ Store:ItemShop(playerid, response, itemid, modelid, price, amount, itemname[]){
             formatex(string, sizeof string, "You have bought an %s", itemname);
             SCM(playerid, X11_GREEN, string);
             defer __GivePlayerMoney(playerid);
-            MenuStore_Close(playerid);
         }
         case 2:{
             new wepid = __GetWeaponID(modelid);
             __GivePlayerWeapons(playerid, wepid, 30 * amount);
             pData[playerid][pMoney] -= price;
             defer __GivePlayerMoney(playerid);
-            MenuStore_Close(playerid);
         }
     }
     return 1;
@@ -1058,7 +1056,7 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
             defer __setPlayerWantedLevel(playerid);
             if(isDying[playerid] == true && pDyingDamageImmune[playerid] == true){
                 GameTextForPlayer(playerid, "~y~You are dying!~n~Medics have been alerted of your location!", 3000, 3);
-                foreach()
+                // foreach()
                 pDyingDamageImmune[playerid] = false;
             }
         }
