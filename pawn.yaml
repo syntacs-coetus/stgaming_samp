@@ -18,6 +18,7 @@ dependencies:
 - oscar-broman/samp-weapon-config
 - Southclaws/formatex
 - syntacs-coetus/MenuStore
+- NexiusTailer/Nex-AC
 runtime:
   maxnpc: 10
   hostname: "STGaming"
