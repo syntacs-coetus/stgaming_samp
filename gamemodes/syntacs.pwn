@@ -3,6 +3,7 @@
 
 #define FIXES_ServerVarMsg 0
 #include <fixes>
+#include <MenuStore>
 #include <weapon-config>
 
 // Native Shortcuts
@@ -31,25 +32,85 @@
 #include <sscanf2>
 #include <streamer>
 #include <formatex>
-#include <MenuStore>
 
-#define MIN_PLAYER_LOOKSIE 5.0
-#define MAX_PLAYER_LOOKSIE 25.0
-#define MAX_NAME (MAX_PLAYER_NAME + 1)
-#define MAX_PASS 500
-#define MAX_EMAIL 220
-#define MAX_DATETIME 20
-#define MAX_DEATHPICKUP 10
-#define MAX_SERVHOSP 1
-#define MAX_SLOTS 12
-#define MAX_LISTLENGTH 50
-#define IMMUNITY_TIME 5
-#define DEATHTIMER_TIME 10
+#define SERVER_RATE             1
+
+#define MIN_PLAYER_LOOKSIE      5.0
+#define MAX_PLAYER_LOOKSIE      25.0
+#define MAX_NAME                (MAX_PLAYER_NAME + 1)
+#define MAX_PASS                500
+#define MAX_EMAIL               220
+#define MAX_DATETIME            20
+#define MAX_DEATHPICKUP         10
+#define MAX_SERVHOSP            1
+#define MAX_SLOTS               12
+#define MAX_LISTLENGTH          50
+#define IMMUNITY_TIME           5
+#define DEATHTIMER_TIME         10
 // Administrative Definition
-#define MIN_ADMIN_LEVEL 1
-#define MAX_ADMIN_LEVEL 6
-#define MIN_FACTION_LEVEL 1
-#define MAX_FACTION_LEVEL 6
+#define MIN_ADMIN_LEVEL         1
+#define MAX_ADMIN_LEVEL         6
+#define MIN_FACTION_LEVEL       1
+#define MAX_FACTION_LEVEL       6
+#define MIN_CRAFT_LEVEL         1
+#define MAX_CRAFT_LEVEL         10
+#define MIN_SMITH_LEVEL         1
+#define MAX_SMITH_LEVEL         10
+#define MIN_LOCKER_LEVEL        1
+#define MAX_LOCKER_LEVEL        10
+
+#define ONLINE_PLAYERS          0
+#define ADMINS                  1
+#define MEDICS                  2
+#define COPS                    3
+#define GOVERNMENT              4
+#define CRAFTSMEN               5
+#define BLACKSMITHS             6
+#define LOCKSMITHS              7
+#define GARBAGE_COLLECTORS      8
+#define LAWYERS                 9
+#define HACKERS                 10
+
+#define SKILL_CRAFTING          1
+#define SKILL_BLACKSMITH        2
+#define SKILL_LOCKSMITH         3
+#define SKILL_GARBAGECOLLECTOR  4
+#define SKILL_LAWYER            5
+#define SKILL_HACKER            6
+
+#define RESOURCE_METAL          0
+#define RESOURCE_PLASTIC        1
+#define RESOURCE_WOOD           2
+#define RESOURCE_LIQUID         3
+#define RESOURCE_HERB           4
+#define RESOURCE_RUBBER         5
+#define RESROUCE_GLASS          6
+#define RESOURCE_EARTH          7
+
+#define DOOR_GLOBAL             0
+#define DOOR_HOUSE              1
+#define DOOR_BUSINESS           2
+#define DOOR_MEDIC              3
+#define DOOR_COP                4
+#define DOOR_GOVERNMENT         5
+#define DOOR_ADMIN              6
+#define DOOR_VIP                7
+#define DOOR_BM                 8
+#define DOOR_SK                 9
+
+#define MAX_AMMO_STACK          10
+#define MAX_RES_STACK           100
+#define MAX_LOCK_STACK          5
+#define MAX_WEAPON_STACK        3
+#define MAX_ITEM_STACK          25
+#define MAX_RESOURCES           10
+#define MAX_CRAFTABLES          10
+#define MAX_NEEDS               5
+
+#define CRAFT_HEALING           0
+#define CRAFT_ARMOUR            1
+#define CRAFT_PHONE             2
+#define CRAFT_HACK              3
 
 enum pInfo{
     pID,
@@ -92,9 +153,67 @@ enum pWeaponInfo{
     pWepAmmo
 }
 
+enum sResources{
+    resID,
+    resName[65],
+    resDesc[128],
+    resModel,
+    resType,
+    Float: resRate,
+    resPrice,
+    bool: resActive
+}
+
+enum sCraftables{
+    craftID,
+    craftName[65],
+    craftDesc[128],
+    craftModel,
+    craftType,
+    Float: craftHeal,
+    Float: craftAr,
+    craftPhonelvl,
+    craftHacklvl,
+    craftStack,
+    craftLvlReq,
+    bool: craftActive
+}
+
+enum sCraftNeeds{
+    cNeedID,
+    cCraftID,
+    cResID,
+    cNeedQuantity
+}
+
+enum sCharCraft{
+    ccID,
+    ccCraftID,
+    ccPID,
+    ccQuantity
+}
+
+enum sCharRes{
+    crID,
+    resID,
+    pID,
+    crQuantity
+}
+
 new 
     pData[MAX_PLAYERS][pInfo],
     pWepData[MAX_PLAYERS][MAX_SLOTS][pWeaponInfo],
+
+    // Items variables
+    resData[MAX_RESOURCES][sResources],
+    craftData[MAX_CRAFTABLES][sCraftables],
+    cNeedsData[MAX_CRAFTABLES][MAX_NEEDS][sCraftNeeds],
+    ccCraftData[MAX_PLAYERS][MAX_CRAFTABLES][sCharCraft],
+    sCharResData[MAX_PLAYERS][MAX_RESOURCES][sCharRes],
+    Iterator: resList<MAX_RESOURCES>,
+    Iterator: craftList<MAX_CRAFTABLES>,
+    Iterator: cNeedList[MAX_CRAFTABLES]<MAX_NEEDS>,
+    Iterator: cCharResList[MAX_PLAYERS]<MAX_RESOURCES>,
 
     killerID[MAX_PLAYERS],
     antiCrimeTime[MAX_PLAYERS],
@@ -133,10 +252,16 @@ new
     
     Group: OnlinePlayers,
     Group: pOwners,
-    Group: AdminList,
     Group: pAdmins[MAX_ADMIN_LEVEL + MIN_ADMIN_LEVEL],
-    Group: pMedics[MAX_ADMIN_LEVEL + MIN_ADMIN_LEVEL],
-    Group: MedicList
+    Group: AdminList,
+    Group: pMedics[MAX_FACTION_LEVEL + MIN_FACTION_LEVEL],
+    Group: MedicList,
+    Group: pCrafters[MAX_CRAFT_LEVEL + MIN_CRAFT_LEVEL],
+    // Group: CrafterList,
+    Group: pWeaponSmithers[MAX_SMITH_LEVEL + MIN_SMITH_LEVEL],
+    Group: WeaponSmithersList,
+    Group: pLockSmithers[MAX_LOCKER_LEVEL + MIN_LOCKER_LEVEL],
+    Group: LockSmitherList
 
     ;
 
@@ -179,13 +304,37 @@ stock const MedicColors[] = {
     X11_VIOLET_RED_2
 };
 
+stock const CraftsmenName[][] = {
+    "Apprentice Crafter",
+    "Trained Crafter",
+    "Junior Crafter",
+    "Advance Crafter",
+    "Intermediate Crafter",
+    "Talented Crafter",
+    "Expert Crafter",
+    "Master Crafter",
+    "Grandmaster Crafter",
+    "Crafting God"
+};
+
+__SetCrafters(){
+    // CrafterList = Group_Create("Craftsmen");
+    for(new i = MIN_CRAFT_LEVEL, j = MAX_CRAFT_LEVEL; i <= j; i++){
+        pCrafters[i] = Group_Create(CraftsmenName[i - 1]);
+    }
+
+    __SetCommands("craft", CRAFTSMEN, 1);
+    __SetCommands("craftlist", CRAFTSMEN, 1);
+    return 1;
+}
+
 __SetCommands(const command[], ctype, level = 0){
     new id = Command_GetID(command);
     switch(ctype){
-        case 1:{
+        case ONLINE_PLAYERS:{
             Group_SetCommand(OnlinePlayers, id, true);
         }
-        case 2:{
+        case ADMINS:{
             if(level >= MIN_ADMIN_LEVEL){
                 new cl = level;
                 while(cl != MAX_ADMIN_LEVEL){
@@ -197,7 +346,7 @@ __SetCommands(const command[], ctype, level = 0){
             // All admin commands can be used by the owner/s
             Group_SetCommand(pOwners, id, true);
         }
-        case 3:{
+        case MEDICS:{
             if(level >= MIN_FACTION_LEVEL){
                 new cl = level;
                 while(cl != MAX_FACTION_LEVEL){
@@ -209,22 +358,34 @@ __SetCommands(const command[], ctype, level = 0){
             // All admin commands can be used by the owner/s
             Group_SetCommand(pOwners, id, true);
         }
+        case CRAFTSMEN:{
+            if(level >= MIN_CRAFT_LEVEL){
+                new cl = level;
+                while(cl != MAX_CRAFT_LEVEL){
+                    new Group: group = pCrafters[cl];
+                    Group_SetCommand(group, id, true);
+                    cl++;
+                }
+            }
+            Group_SetCommand(pOwners, id, true);
+        }
     }
 }
 
 __InitializeOnline(){
     OnlinePlayers = Group_Create("Online Players");
     
-    __SetCommands("kill", 1);
-    __SetCommands("adminsonline", 1);
-    __SetCommands("buy", 1);
+    __SetCommands("kill", ONLINE_PLAYERS);
+    __SetCommands("adminsonline", ONLINE_PLAYERS);
+    __SetCommands("buy", ONLINE_PLAYERS);
+    __SetCommands("checkresources", ONLINE_PLAYERS);
 }
 
 /* INITIALIZE MEDICS */
 
 __InitializeMedics(){
     MedicList = Group_Create("Medics");
-    for(new i = MIN_FACTION_LEVEL, j = MAX_FACTION_LEVEL; i < j; i++){
+    for(new i = MIN_FACTION_LEVEL, j = MAX_FACTION_LEVEL; i <= j; i++){
         pMedics[i] = Group_Create(MedicNames[i - 1]);
         Group_SetColor(pAdmins[i], MedicColors[i - 1]);
     }
@@ -245,55 +406,55 @@ __GetWeaponSlot(weaponid){
     new wepSlot = -1;
     switch(weaponid){
         // slot 0
-        case 1..2:{
+        case 0..WEAPON_BRASSKNUCKLE:{
             wepSlot = 0;
         }
         // slot 1
-        case 3..9:{
+        case WEAPON_GOLFCLUB..WEAPON_CHAINSAW:{
             wepSlot = 1;
         }
         // slot 2
-        case 22..24:{
+        case WEAPON_COLT45..WEAPON_DEAGLE:{
             wepSlot = 2;
         }
         // slot 3
-        case 25..27:{
+        case WEAPON_SHOTGUN..WEAPON_SHOTGSPA:{
             wepSlot = 3;
         }
         // slot 4
-        case 28, 29, 32:{
+        case WEAPON_UZI, WEAPON_MP5, WEAPON_TEC9:{
             wepSlot = 4;
         }
         // slot 5
-        case 30, 31:{
+        case WEAPON_AK47, WEAPON_M4:{
             wepSlot = 5;
         }
         // slot 6
-        case 33, 34:{
+        case WEAPON_RIFLE, WEAPON_SNIPER:{
             wepSlot = 6;
         }
         // slot 7
-        case 35..38:{
+        case WEAPON_ROCKETLAUNCHER..WEAPON_MINIGUN:{
             wepSlot = 7;
         }
         // slot 8
-        case 16..18:{
+        case WEAPON_GRENADE..WEAPON_MOLTOV:{
             wepSlot = 8;
         }
         // slot 9
-        case 41..43:{
+        case WEAPON_SPRAYCAN..WEAPON_CAMERA:{
             wepSlot = 9;
         }
         // slot 10
-        case 10..15:{
+        case WEAPON_DILDO..WEAPON_CANE:{
             wepSlot = 10;
         }
         // slot 11
-        case 44..46:{
+        case 44..WEAPON_PARACHUTE:{
             wepSlot = 11;
         }
         // slot 12
-        case 40:{
+        case WEAPON_BOMB:{
             wepSlot = 12;
         }
     }
@@ -336,13 +497,14 @@ __InitializeAdmins(){
         pAdmins[i] = Group_Create(ModeratorNames[i - 1]);
         Group_SetColor(pAdmins[i], ModeratorColors[i - 1]);
     }
-    __SetCommands("spawnveh", 2, 2);
-    __SetCommands("giveplayerweapon", 2, 2);
-    __SetCommands("giveplayermoney", 2, 3);
-    __SetCommands("admincommands", 2, 1);
-    __SetCommands("giveplayerhealth", 2, 3);
-    __SetCommands("giveplayerarmour", 2, 3);
-    __SetCommands("setplayerwanted", 2, 1);
+    __SetCommands("spawnveh", ADMINS, 2);
+    __SetCommands("giveplayerweapon", ADMINS, 2);
+    __SetCommands("giveplayermoney", ADMINS, 3);
+    __SetCommands("admincommands", ADMINS, 1);
+    __SetCommands("giveplayerhealth", ADMINS, 3);
+    __SetCommands("giveplayerarmour", ADMINS, 3);
+    __SetCommands("setplayerwanted", ADMINS, 1);
+    __SetCommands("giveplayerresource", ADMINS, 3);
     return 1;
 }
 
@@ -432,7 +594,7 @@ SpawnPlayerEx(playerid){
         pData[playerid][pCache] = MYSQL_INVALID_CACHE;
         inline getCharDet(){
             if(cache_num_rows() != 0){
-                cache_get_value_int(0, "killerpoints", pData[playerid][pKillPoints]);
+                cache_get_value_int(0, "pkillerpoints", pData[playerid][pKillPoints]);
                 cache_get_value_float(0, "posx", pData[playerid][pPos][0]);
                 cache_get_value_float(0, "posy", pData[playerid][pPos][1]);
                 cache_get_value_float(0, "posz", pData[playerid][pPos][2]);
@@ -521,7 +683,7 @@ SpawnPlayerEx(playerid){
                             cache_get_value_int(0, "group", pData[playerid][pDepartment]);
                             cache_get_value_int(0, "rank", pData[playerid][pRank]);
                             switch(pData[playerid][pDepartment]){
-                                case 2:{
+                                case MEDICS:{
                                     Group_SetPlayer(pMedics[pData[playerid][pRank]], playerid, true);
                                     if(pData[playerid][pAdmin] == 0){
                                         SetPlayerColor(playerid, Group_GetColor(pMedics[pData[playerid][pRank]]));
@@ -547,6 +709,7 @@ SpawnPlayerEx(playerid){
                         if(pData[playerid][pKillPoints] !=0){
                             defer __setPlayerWantedLevel(playerid);
                         }
+                        Iter_Init(cCharResList[playerid]);
 
                         // After realizing that Group_GetPlayer does not work OnPlayerDisconnect I will have to make an adjustment
                         // This code will do that
@@ -598,6 +761,60 @@ CommandError(const playerid, const text[]){
     return 1;
 }
 
+__GetResourceName(rID){
+    new name[65];
+    foreach(new r : resList){
+        if(resData[r][resID] == rID){
+            memcpy(name, resData[r][resName], 0, sizeof(name) * 4, sizeof name);
+            break;
+        }
+    }
+    return name;
+}
+
+__GetCraftID(__craftID){
+    foreach(new __cRID : craftList){
+        if(__craftID == craftData[__cRID][craftID]){
+            return __cRID;
+        }
+    }
+    return 0;
+}
+
+__GetResourceID(rID){
+    foreach(new r : resList){
+        if(resData[r][resID] == rID) return r;
+    }
+    return 0;
+}
+
+__GivePlayerResources(playerid, resourcesID, quantity){
+    new query[71 + (11 * 3) + 1];
+    inline CheckPlayerResource(){
+        new resid;
+        cache_get_value_int(resourcesID, "res_id", resid);
+        inline UpdatePlayerResource(){
+            if(cache_num_rows() != 0){
+                new oldquantity, total = quantity;
+                cache_get_value_int(0, "cr_quantity", oldquantity);
+                total+=oldquantity;
+                mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", total, resid, pData[playerid][pID]);
+                mysql_query(sampdb, query);
+            }else{
+                mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charres (res_id, pid, cr_quantity) VALUES (%d, %d, %d)", resid, pData[playerid][pID], quantity);
+                mysql_query(sampdb, query);
+            }
+            if(mysql_errno(sampdb) != 0){
+                return 0;
+            }
+        }
+        MySQL_TQueryInline(sampdb, using inline UpdatePlayerResource, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d", resid, pData[playerid][pID]);
+    }
+    MySQL_TQueryInline(sampdb, using inline CheckPlayerResource, "SELECT * FROM stg_resources");
+    return 1;
+}
+
+
 /* MENU ITEMS */
 
 Store:ItemShop(playerid, response, itemid, modelid, price, amount, itemname[]){
@@ -621,12 +838,164 @@ Store:ItemShop(playerid, response, itemid, modelid, price, amount, itemname[]){
             __GivePlayerWeapons(playerid, wepid, 30 * amount);
             pData[playerid][pMoney] -= price;
             defer __GivePlayerMoney(playerid);
+            formatex(string, sizeof string, "You have bought a/an %s for $%d", itemname, price);
+            SCM(playerid, X11_GREEN, string);
         }
     }
     return 1;
 }
 
+YCMD:checkresources(playerid, params[], help){
+    #pragma unused params, help
+    new query[155 + 11 + 1];
+    inline EmptyDialog(pid, did, response, listitem, string:inputtext[]){
+        #pragma unused pid, did, response, listitem, inputtext
+    }
+    inline CheckPlayerResource(){
+        if(cache_num_rows() != 0){
+            new string[1280], cl = 0;
+            format(string, sizeof string, "Resources\tQuantity");
+            while(cl < cache_num_rows()){
+                new rName[65], rQuantity;
+                cache_get_value(cl, "res_name", rName, sizeof rName);
+                cache_get_value_int(cl, "cr_quantity", rQuantity);
+                format(string, sizeof string, "%s\n%s\t%d", string, rName, rQuantity);
+                cl++;
+            }
+            Dialog_ShowCallback(playerid, using inline EmptyDialog, DIALOG_STYLE_TABLIST_HEADERS, "Your Resources", string, "Close");
+        }else{
+            SCM(playerid, X11_DARK_GOLDENROD_2, "You do not have resources");
+        }
+    }
+    mysql_format(sampdb, query, sizeof query, "SELECT stg_resources.res_name, stg_charres.cr_quantity FROM stg_charres LEFT JOIN stg_resources ON stg_charres.res_id = stg_resources.res_id WHERE pid = %d", pData[playerid][pID]);
+    MySQL_TQueryInline(sampdb, using inline CheckPlayerResource, query);
+    return 1;
+}
+
+YCMD:giveplayerresource(playerid, params[], help){
+    #pragma unused params, help
+    new targetid;
+    if(sscanf(params, "d", targetid)) return CommandHelp(playerid, "giveplayerresource", "[Player ID / Part of Name]");
+    if(CommandPlayerCheck(playerid, targetid) == 0) return 1;
+    new string[1280];
+    inline ResourceList(pid, did, response, listitem, string: text[]){
+        #pragma unused pid, did, text
+        if(response){
+            inline ResourceQuantity(p, d, resp, item, string:inputtext[]){
+                #pragma unused p, d, item
+                if(resp){
+                    if(__GivePlayerResources(playerid, listitem, strval(inputtext)) == 1){
+                        formatex(string, sizeof string, "You have given %p %d %s/'s", targetid, strval(inputtext), resData[listitem][resName]);
+                        SCM(playerid, X11_GREEN, string);
+                        formatex(string, sizeof string, "%p has given you %d %s/'s", playerid, strval(inputtext), resData[listitem][resName]);
+                        SCM(playerid, X11_GREEN, string);
+                    }else{
+                        SCM(playerid, X11_DARK_GOLDENROD_2, "There seems to be a problem with the command please try again");
+                    }
+                }
+            }
+            Dialog_ShowCallback(playerid, using inline ResourceQuantity, DIALOG_STYLE_INPUT, "Resource Quantity", "How much would you like to give?", "Okay", "Close");
+        }
+    }
+    inline GetResources(){
+        if(cache_num_rows() != 0){
+            new cl = 0;
+            while(cl < cache_num_rows()){
+                new rName[65];
+                cache_get_value(cl, "res_name", rName, sizeof rName);
+                if(strlen(string) == 0){
+                    format(string, sizeof string, "%s", rName);
+                }else{
+                    format(string, sizeof string, "%s\n%s", string, rName);
+                }
+                cl++;
+            }
+            Dialog_ShowCallback(playerid, using inline ResourceList, DIALOG_STYLE_LIST, "Resource List", string, "Choose", "Close");
+        }else{
+            SCM(playerid, X11_DARK_GOLDENROD_2, "The server does not have resources set");
+        }
+    }
+    MySQL_TQueryInline(sampdb, using inline GetResources, "SELECT * FROM stg_resources");
+    return 1;
+}
+
+YCMD:craftlist(playerid, params[], help){
+    #pragma unused params, help
+    new string[1280], Cache:result, query[110 + 11 + 1];
+    format(string, sizeof string, "Item\tQuantity");
+    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres INNER JOIN stg_resources ON stg_charres.res_id = stg_resources.res_id WHERE pid = %d", pData[playerid][pID]);
+    result = mysql_query(sampdb, query);
+    if(result){
+        new row;
+        cache_get_row_count(row);
+        if(row != 0){
+            new rName[65], rQuantity, cl = 0;
+            while(cl < row){
+                cache_get_value(cl, "res_name", rName, sizeof rName);
+                cache_get_value_int(cl, "cr_quantity", rQuantity);
+                format(string, sizeof string, "%s\n%s\t%d", string, rName, rQuantity);
+            }
+            inline CraftList(pid, did, response, listitem, string: inputtext[]){
+                #pragma unused pid, did, response, listitem, inputtext
+            }
+            Dialog_ShowCallback(playerid, using inline CraftList, DIALOG_STYLE_TABLIST_HEADERS, "Crafted Items", string, "Cancel");
+        }else{
+            SCM(playerid, X11_DARK_GOLDENROD_2, "You have not crafted any items");
+        }
+    }else{
+        SCM(playerid, X11_DARK_GOLDENROD_2, "Something went wrong, try again");
+    }
+    return 1;
+}
+
+Store:CraftMenu(playerid, response, itemid, modelid, price, amount, itemname[]){
+    if(!response) return true;
+    return true;
+}
+
+YCMD:craft(playerid, params[], help){
+    #pragma unused params, help
+    inline FetchCraftables(){
+        if(cache_num_rows() != 0){
+            new cl = 0, cID, cName[65], cDesc[128], descString[1280], cModel, cStack, Cache:result;
+            while(cl < cache_num_rows()){
+                cache_get_value_int(cl, "craft_id", cID);
+                cache_get_value(cl, "craft_name", cName, sizeof cName);
+                cache_get_value(cl, "craft_desc", cDesc, sizeof cDesc);
+                cache_get_value_int(cl, "craft_model", cModel);
+                cache_get_value_int(cl, "craft_stack", cStack);
+                new query[136 + 11 + 1];
+                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds INNER JOIN stg_resources ON stg_craftneeds.res_id = stg_resources.res_id WHERE stg_craftneeds.craft_id = %d", cID);
+                result = mysql_query(sampdb, query);
+                if(result){
+                    new row;
+                    cache_get_row_count(row);
+                    if(row != 0){
+                        new cnL = 0, cnName[65], cnQuantity;
+                        format(descString, sizeof descString, "~y~%s~n~~n~~r~Requirements:", cDesc);
+                        while(cnL < row){
+                            cache_get_value(cnL, "res_name", cnName, sizeof cnName);
+                            cache_get_value_int(cnL, "need_quant", cnQuantity);
+                            format(descString, sizeof descString, "%s~n~~g~%s: ~w~%dx", descString, cnName, cnQuantity);
+                            cnL++;
+                        }
+                        MenuStore_AddItem(playerid, cID, cModel, cName, 0, descString, .description_size = 10.0, .stack = cStack);
+                    }
+                }
+                cache_delete(result);
+                cl++;
+            }
+            MenuStore_Show(playerid, CraftMenu, "Craft Menu");
+        }else{
+            SCM(playerid, X11_DARK_GOLDENROD_2, "There are no craftable items for the server");
+        }
+    }
+    MySQL_TQueryInline(sampdb, using inline FetchCraftables, "SELECT * FROM stg_craftables");
+    return 1;
+}
+
 YCMD:buy(playerid, params[], help){
+    #pragma unused playerid, params, help
     MenuStore_AddItem(playerid, 1, 19513, "Anti-Crime Kit", 2500, "A kit that avoids the detection of cops for 30 mins");
     MenuStore_AddItem(playerid, 2, 355, "AK-47", 300, "A Russian made Assualt Rifle", .zoom = 1.75);
     MenuStore_Show(playerid, ItemShop, "Item Shop");
@@ -839,7 +1208,7 @@ main() {
 
 public OnGameModeInit(){
 
-    new string[10 + (11 * 3) + 1];
+    new string[10 + (11 * 3) + 1], query[79 + 11 + 11 + 1];
     format(string, sizeof string, "v %d.%d.%d", SYNTACS_VERSION_MAJOR, SYNTACS_VERSION_MINOR, SYNTACS_VERSION_PATCH);
     SetGameModeText(string);
 
@@ -865,7 +1234,67 @@ public OnGameModeInit(){
     __InitializeOnline();
     __InitializeAdmins();
     __InitializeMedics();
+    __SetCrafters();
 
+    Iter_Init(resList);
+
+    inline FetchResources(){
+        if(cache_num_rows() != 0){
+            for(new i = 0, j = cache_num_rows(); i < j; i++){
+                cache_get_value_int(i, "res_id", resData[i][resID]);
+                cache_get_value(i, "res_name", resData[i][resName], 65);
+                cache_get_value(i, "res_description", resData[i][resDesc], 128);
+                cache_get_value_int(i, "res_model", resData[i][resModel]);
+                cache_get_value_int(i, "res_type", resData[i][resType]);
+                cache_get_value_float(i, "res_rate", resData[i][resRate]);
+                cache_get_value_int(i, "res_price", resData[i][resPrice]);
+                cache_get_value_bool(i, "res_active", resData[i][resActive]);
+                Iter_Add(resList, i);
+            }
+        }else{
+            printf("Server Resources has not been set. Please see to it that this items are set");
+            SendRconCommand("exit");
+        }
+    }
+    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_resources ORDER BY res_id ASC LIMIT %d", MAX_RESOURCES);
+    MySQL_TQueryInline(sampdb, using inline FetchResources, query);
+
+    Iter_Init(craftList);
+    inline FetchCraftables(){
+        if(cache_num_rows() != 0){
+            for(new i = 0, j = cache_num_rows(); i < j; i++){
+                cache_get_value_int(i, "craft_id", craftData[i][craftID]);
+                cache_get_value(i, "craft_name", craftData[i][craftName], 65);
+                cache_get_value(i, "craft_desc", craftData[i][craftDesc], 128);
+                cache_get_value(i, "craft_model", craftData[i][craftModel]);
+                cache_get_value(i, "craft_type", craftData[i][craftType]);
+                cache_get_value_float(i, "craft_heal", craftData[i][craftHeal]);
+                cache_get_value_float(i, "craft_ar", craftData[i][craftAr]);
+                cache_get_value_int(i, "craft_phonelevel", craftData[i][craftPhonelvl]);
+                cache_get_value_int(i, "craft_hacklevel", craftData[i][craftHacklvl]);
+                cache_get_value_int(i, "craft_stack", craftData[i][craftStack]);
+                cache_get_value_int(i, "craft_levreq", craftData[i][craftLvlReq]);
+                cache_get_value_bool(i, "craft_active", craftData[i][craftActive]);
+                Iter_Add(craftList, i);
+                Iter_Init(cNeedList[i]);
+                inline FetchCraftNeeds(){
+                    if(cache_num_rows() != 0){
+                        for(new k = 0, l = cache_num_rows(); k < l; k++){
+                            cache_get_value_int(k, "cneed_id", cNeedsData[i][k][cNeedID]);
+                            cNeedsData[i][k][cCraftID] = craftData[i][craftID];
+                            cache_get_value_int(k, "res_id", cNeedsData[i][k][cResID]);
+                            cache_get_value_int(k, "need_quant", cNeedsData[i][k][cNeedQuantity]);
+                            Iter_Add(cNeedList[i], k);
+                        }
+                    }
+                }
+                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d ORDER BY cneed_id ASC LIMIT %d", craftData[i][craftID], MAX_NEEDS);
+                MySQL_TQueryInline(sampdb, using inline FetchCraftNeeds, query);
+            }
+        }
+    }
+    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftables ORDER BY craft_id LIMIT %d", MAX_CRAFTABLES);
+    MySQL_TQueryInline(sampdb, using inline FetchCraftables, query);
     return 1;
 }
 
@@ -967,7 +1396,7 @@ public OnPlayerDisconnect(playerid, reason){
             pData[playerid] = empty_player;
             Group_SetPlayer(OnlinePlayers, playerid, false);
         }
-        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET killerpoints = %d, posx = %f, posy = %f, posz = %f, posa = %f, phealth = %f, parmour = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pKillPoints], pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pHP], pData[playerid][pArmour], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
+        mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET pkillerpoints = %d, posx = %f, posy = %f, posz = %f, posa = %f, phealth = %f, parmour = %f, posint = %d, posvw = %d, pgun = %d WHERE pid = %d", pData[playerid][pKillPoints], pData[playerid][pPos][0], pData[playerid][pPos][1], pData[playerid][pPos][2], pData[playerid][pPos][3], pData[playerid][pHP], pData[playerid][pArmour], pData[playerid][pInterior], pData[playerid][pVirtualWorld], pData[playerid][pEquippedGun], pData[playerid][pID]);
         MySQL_TQueryInline(sampdb, using inline SaveDisconnect, query);
     }
     return 1;
@@ -1056,7 +1485,6 @@ public OnPlayerDeathFinished(playerid, bool: cancelable){
             defer __setPlayerWantedLevel(playerid);
             if(isDying[playerid] == true && pDyingDamageImmune[playerid] == true){
                 GameTextForPlayer(playerid, "~y~You are dying!~n~Medics have been alerted of your location!", 3000, 3);
-                // foreach()
                 pDyingDamageImmune[playerid] = false;
             }
         }
