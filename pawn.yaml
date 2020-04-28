@@ -17,7 +17,7 @@ dependencies:
 - oscar-broman/SKY:2.3.0
 - oscar-broman/samp-weapon-config
 - Southclaws/formatex
-- syntacs-coetus/MenuStore
+- CoyStark/MenuStore
 - NexiusTailer/Nex-AC
 runtime:
   maxnpc: 10
