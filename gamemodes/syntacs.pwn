@@ -35,82 +35,95 @@
 
 #define SERVER_RATE             1
 
-#define MIN_PLAYER_LOOKSIE      5.0
-#define MAX_PLAYER_LOOKSIE      25.0
-#define MAX_NAME                (MAX_PLAYER_NAME + 1)
-#define MAX_PASS                500
-#define MAX_EMAIL               220
-#define MAX_DATETIME            20
-#define MAX_DEATHPICKUP         10
-#define MAX_SERVHOSP            1
-#define MAX_SLOTS               12
-#define MAX_LISTLENGTH          50
-#define IMMUNITY_TIME           5
-#define DEATHTIMER_TIME         10
-// Administrative Definition
-#define MIN_ADMIN_LEVEL         1
-#define MAX_ADMIN_LEVEL         6
-#define MIN_FACTION_LEVEL       1
-#define MAX_FACTION_LEVEL       6
-#define MIN_CRAFT_LEVEL         1
-#define MAX_CRAFT_LEVEL         10
-#define MIN_SMITH_LEVEL         1
-#define MAX_SMITH_LEVEL         10
-#define MIN_LOCKER_LEVEL        1
-#define MAX_LOCKER_LEVEL        10
+// Time definitions
+#define IMMUNITY_TIME                   5
+#define DEATHTIMER_TIME                 10
 
-#define ONLINE_PLAYERS          0
-#define ADMINS                  1
-#define MEDICS                  2
-#define COPS                    3
-#define GOVERNMENT              4
-#define CRAFTSMEN               5
-#define BLACKSMITHS             6
-#define LOCKSMITHS              7
-#define GARBAGE_COLLECTORS      8
-#define LAWYERS                 9
-#define HACKERS                 10
+/* Min and Max definitions */
 
-#define SKILL_CRAFTING          1
-#define SKILL_BLACKSMITH        2
-#define SKILL_LOCKSMITH         3
-#define SKILL_GARBAGECOLLECTOR  4
-#define SKILL_LAWYER            5
-#define SKILL_HACKER            6
+#define MIN_PLAYER_LOOKSIE              5.0
+#define MAX_PLAYER_LOOKSIE              25.0
+#define MAX_NAME                        (MAX_PLAYER_NAME + 1)
+#define MAX_PASS                        500
+#define MAX_EMAIL                       220
+#define MAX_DATETIME                    20
+#define MAX_DEATHPICKUP                 10
+#define MAX_SERVHOSP                    1
+#define MAX_SLOTS                       12
+#define MAX_LISTLENGTH                  50
+#define MIN_ADMIN_LEVEL                 1
+#define MAX_ADMIN_LEVEL                 6
+#define MIN_FACTION_LEVEL               1
+#define MAX_FACTION_LEVEL               6
+#define MIN_CRAFT_LEVEL                 1
+#define MAX_CRAFT_LEVEL                 10
+#define MIN_SMITH_LEVEL                 1
+#define MAX_SMITH_LEVEL                 10
+#define MIN_LOCKER_LEVEL                1
+#define MAX_LOCKER_LEVEL                10
 
-#define RESOURCE_METAL          0
-#define RESOURCE_PLASTIC        1
-#define RESOURCE_WOOD           2
-#define RESOURCE_LIQUID         3
-#define RESOURCE_HERB           4
-#define RESOURCE_RUBBER         5
-#define RESROUCE_GLASS          6
-#define RESOURCE_EARTH          7
+#define MAX_AMMO_STACK                  10
+#define MAX_RES_STACK                   100
+#define MAX_LOCK_STACK                  5
+#define MAX_WEAPON_STACK                3
+#define MAX_ITEM_STACK                  25
+#define MAX_RESOURCES                   10
+#define MAX_CRAFTABLES                  10
+#define MAX_NEEDS                       5
 
-#define DOOR_GLOBAL             0
-#define DOOR_HOUSE              1
-#define DOOR_BUSINESS           2
-#define DOOR_MEDIC              3
-#define DOOR_COP                4
-#define DOOR_GOVERNMENT         5
-#define DOOR_ADMIN              6
-#define DOOR_VIP                7
-#define DOOR_BM                 8
-#define DOOR_SK                 9
+/* Type definitions */
 
-#define MAX_AMMO_STACK          10
-#define MAX_RES_STACK           100
-#define MAX_LOCK_STACK          5
-#define MAX_WEAPON_STACK        3
-#define MAX_ITEM_STACK          25
-#define MAX_RESOURCES           10
-#define MAX_CRAFTABLES          10
-#define MAX_NEEDS               5
+#define TYPE_ONLINE_PLAYERS             0
+#define TYPE_ADMINS                     1
+#define TYPE_MEDICS                     2
+#define TYPE_COPS                       3
+#define TYPE_GOVERNMENT                 4
+#define TYPE_CRAFTSMEN                  5
+#define TYPE_BLACKSMITHS                6
+#define TYPE_LOCKSMITHS                 7
+#define TYPE_GARBAGE_COLLECTORS         8
+#define TYPE_LAWYERS                    9
+#define TYPE_HACKERS                    10
 
-#define CRAFT_HEALING           0
-#define CRAFT_ARMOUR            1
-#define CRAFT_PHONE             2
-#define CRAFT_HACK              3
+/* Skill Definition */
+
+#define SKILL_CRAFTING                  1
+#define SKILL_BLACKSMITH                2
+#define SKILL_LOCKSMITH                 3
+#define SKILL_GARBAGECOLLECTOR          4
+#define SKILL_LAWYER                    5
+#define SKILL_HACKER                    6
+
+/* Resource types definition */
+
+#define RESOURCE_METAL                  0
+#define RESOURCE_PLASTIC                1
+#define RESOURCE_WOOD                   2
+#define RESOURCE_LIQUID                 3
+#define RESOURCE_HERB                   4
+#define RESOURCE_RUBBER                 5
+#define RESROUCE_GLASS                  6
+#define RESOURCE_EARTH                  7
+
+/* Door types definition */
+
+#define DOOR_GLOBAL                     0
+#define DOOR_HOUSE                      1
+#define DOOR_BUSINESS                   2
+#define DOOR_MEDIC                      3
+#define DOOR_COP                        4
+#define DOOR_GOVERNMENT                 5
+#define DOOR_ADMIN                      6
+#define DOOR_VIP                        7
+#define DOOR_BM                         8
+#define DOOR_SK                         9
+
+/* Crafting types definition */
+
+#define CRAFT_HEALING                   0
+#define CRAFT_ARMOUR                    1
+#define CRAFT_PHONE                     2
+#define CRAFT_HACK                      3
 
 enum pInfo{
     pID,
@@ -153,67 +166,9 @@ enum pWeaponInfo{
     pWepAmmo
 }
 
-enum sResources{
-    resID,
-    resName[65],
-    resDesc[128],
-    resModel,
-    resType,
-    Float: resRate,
-    resPrice,
-    bool: resActive
-}
-
-enum sCraftables{
-    craftID,
-    craftName[65],
-    craftDesc[128],
-    craftModel,
-    craftType,
-    Float: craftHeal,
-    Float: craftAr,
-    craftPhonelvl,
-    craftHacklvl,
-    craftStack,
-    craftLvlReq,
-    bool: craftActive
-}
-
-enum sCraftNeeds{
-    cNeedID,
-    cCraftID,
-    cResID,
-    cNeedQuantity
-}
-
-enum sCharCraft{
-    ccID,
-    ccCraftID,
-    ccPID,
-    ccQuantity
-}
-
-enum sCharRes{
-    crID,
-    resID,
-    pID,
-    crQuantity
-}
-
 new 
     pData[MAX_PLAYERS][pInfo],
     pWepData[MAX_PLAYERS][MAX_SLOTS][pWeaponInfo],
-
-    // Items variables
-    resData[MAX_RESOURCES][sResources],
-    craftData[MAX_CRAFTABLES][sCraftables],
-    cNeedsData[MAX_CRAFTABLES][MAX_NEEDS][sCraftNeeds],
-    ccCraftData[MAX_PLAYERS][MAX_CRAFTABLES][sCharCraft],
-    sCharResData[MAX_PLAYERS][MAX_RESOURCES][sCharRes],
-    Iterator: resList<MAX_RESOURCES>,
-    Iterator: craftList<MAX_CRAFTABLES>,
-    Iterator: cNeedList[MAX_CRAFTABLES]<MAX_NEEDS>,
-    Iterator: cCharResList[MAX_PLAYERS]<MAX_RESOURCES>,
 
     killerID[MAX_PLAYERS],
     antiCrimeTime[MAX_PLAYERS],
@@ -256,12 +211,12 @@ new
     Group: AdminList,
     Group: pMedics[MAX_FACTION_LEVEL + MIN_FACTION_LEVEL],
     Group: MedicList,
-    Group: pCrafters[MAX_CRAFT_LEVEL + MIN_CRAFT_LEVEL],
+    Group: pCrafters[MAX_CRAFT_LEVEL + MIN_CRAFT_LEVEL]
     // Group: CrafterList,
-    Group: pWeaponSmithers[MAX_SMITH_LEVEL + MIN_SMITH_LEVEL],
-    Group: WeaponSmithersList,
-    Group: pLockSmithers[MAX_LOCKER_LEVEL + MIN_LOCKER_LEVEL],
-    Group: LockSmitherList
+    // Group: pWeaponSmithers[MAX_SMITH_LEVEL + MIN_SMITH_LEVEL],
+    // Group: WeaponSmithersList,
+    // Group: pLockSmithers[MAX_LOCKER_LEVEL + MIN_LOCKER_LEVEL],
+    // Group: LockSmitherList
 
     ;
 
@@ -323,18 +278,18 @@ __SetCrafters(){
         pCrafters[i] = Group_Create(CraftsmenName[i - 1]);
     }
 
-    __SetCommands("craft", CRAFTSMEN, 1);
-    __SetCommands("craftlist", CRAFTSMEN, 1);
+    __SetCommands("craft", TYPE_CRAFTSMEN, 1);
+    __SetCommands("craftlist", TYPE_CRAFTSMEN, 1);
     return 1;
 }
 
 __SetCommands(const command[], ctype, level = 0){
     new id = Command_GetID(command);
     switch(ctype){
-        case ONLINE_PLAYERS:{
+        case TYPE_ONLINE_PLAYERS:{
             Group_SetCommand(OnlinePlayers, id, true);
         }
-        case ADMINS:{
+        case TYPE_ADMINS:{
             if(level >= MIN_ADMIN_LEVEL){
                 new cl = level;
                 while(cl != MAX_ADMIN_LEVEL){
@@ -346,7 +301,7 @@ __SetCommands(const command[], ctype, level = 0){
             // All admin commands can be used by the owner/s
             Group_SetCommand(pOwners, id, true);
         }
-        case MEDICS:{
+        case TYPE_MEDICS:{
             if(level >= MIN_FACTION_LEVEL){
                 new cl = level;
                 while(cl != MAX_FACTION_LEVEL){
@@ -358,7 +313,7 @@ __SetCommands(const command[], ctype, level = 0){
             // All admin commands can be used by the owner/s
             Group_SetCommand(pOwners, id, true);
         }
-        case CRAFTSMEN:{
+        case TYPE_CRAFTSMEN:{
             if(level >= MIN_CRAFT_LEVEL){
                 new cl = level;
                 while(cl != MAX_CRAFT_LEVEL){
@@ -375,10 +330,10 @@ __SetCommands(const command[], ctype, level = 0){
 __InitializeOnline(){
     OnlinePlayers = Group_Create("Online Players");
     
-    __SetCommands("kill", ONLINE_PLAYERS);
-    __SetCommands("adminsonline", ONLINE_PLAYERS);
-    __SetCommands("buy", ONLINE_PLAYERS);
-    __SetCommands("checkresources", ONLINE_PLAYERS);
+    __SetCommands("kill", TYPE_ONLINE_PLAYERS);
+    __SetCommands("adminsonline", TYPE_ONLINE_PLAYERS);
+    __SetCommands("buy", TYPE_ONLINE_PLAYERS);
+    __SetCommands("checkresources", TYPE_ONLINE_PLAYERS);
 }
 
 /* INITIALIZE MEDICS */
@@ -497,14 +452,14 @@ __InitializeAdmins(){
         pAdmins[i] = Group_Create(ModeratorNames[i - 1]);
         Group_SetColor(pAdmins[i], ModeratorColors[i - 1]);
     }
-    __SetCommands("spawnveh", ADMINS, 2);
-    __SetCommands("giveplayerweapon", ADMINS, 2);
-    __SetCommands("giveplayermoney", ADMINS, 3);
-    __SetCommands("admincommands", ADMINS, 1);
-    __SetCommands("giveplayerhealth", ADMINS, 3);
-    __SetCommands("giveplayerarmour", ADMINS, 3);
-    __SetCommands("setplayerwanted", ADMINS, 1);
-    __SetCommands("giveplayerresource", ADMINS, 3);
+    __SetCommands("spawnveh", TYPE_ADMINS, 2);
+    __SetCommands("giveplayerweapon", TYPE_ADMINS, 2);
+    __SetCommands("giveplayermoney", TYPE_ADMINS, 3);
+    __SetCommands("admincommands", TYPE_ADMINS, 1);
+    __SetCommands("giveplayerhealth", TYPE_ADMINS, 3);
+    __SetCommands("giveplayerarmour", TYPE_ADMINS, 3);
+    __SetCommands("setplayerwanted", TYPE_ADMINS, 1);
+    __SetCommands("giveplayerresource", TYPE_ADMINS, 3);
     return 1;
 }
 
@@ -683,7 +638,7 @@ SpawnPlayerEx(playerid){
                             cache_get_value_int(0, "group", pData[playerid][pDepartment]);
                             cache_get_value_int(0, "rank", pData[playerid][pRank]);
                             switch(pData[playerid][pDepartment]){
-                                case MEDICS:{
+                                case TYPE_MEDICS:{
                                     Group_SetPlayer(pMedics[pData[playerid][pRank]], playerid, true);
                                     if(pData[playerid][pAdmin] == 0){
                                         SetPlayerColor(playerid, Group_GetColor(pMedics[pData[playerid][pRank]]));
@@ -759,33 +714,6 @@ CommandPlayerCheck(playerid, targetid){
 CommandError(const playerid, const text[]){
     SCM(playerid, X11_FIREBRICK, text);
     return 1;
-}
-
-__GetResourceName(rID){
-    new name[65];
-    foreach(new r : resList){
-        if(resData[r][resID] == rID){
-            memcpy(name, resData[r][resName], 0, sizeof(name) * 4, sizeof name);
-            break;
-        }
-    }
-    return name;
-}
-
-__GetCraftID(__craftID){
-    foreach(new __cRID : craftList){
-        if(__craftID == craftData[__cRID][craftID]){
-            return __cRID;
-        }
-    }
-    return 0;
-}
-
-__GetResourceID(rID){
-    foreach(new r : resList){
-        if(resData[r][resID] == rID) return r;
-    }
-    return 0;
 }
 
 __GivePlayerResources(playerid, resourcesID, quantity){
@@ -877,7 +805,7 @@ YCMD:giveplayerresource(playerid, params[], help){
     new targetid;
     if(sscanf(params, "d", targetid)) return CommandHelp(playerid, "giveplayerresource", "[Player ID / Part of Name]");
     if(CommandPlayerCheck(playerid, targetid) == 0) return 1;
-    new string[1280];
+    new string[1280], resName[MAX_RESOURCES][65];
     inline ResourceList(pid, did, response, listitem, string: text[]){
         #pragma unused pid, did, text
         if(response){
@@ -885,9 +813,9 @@ YCMD:giveplayerresource(playerid, params[], help){
                 #pragma unused p, d, item
                 if(resp){
                     if(__GivePlayerResources(playerid, listitem, strval(inputtext)) == 1){
-                        formatex(string, sizeof string, "You have given %p %d %s/'s", targetid, strval(inputtext), resData[listitem][resName]);
+                        formatex(string, sizeof string, "You have given %p %d %s/'s", targetid, strval(inputtext), resName[listitem]);
                         SCM(playerid, X11_GREEN, string);
-                        formatex(string, sizeof string, "%p has given you %d %s/'s", playerid, strval(inputtext), resData[listitem][resName]);
+                        formatex(string, sizeof string, "%p has given you %d %s/'s", playerid, strval(inputtext), resName[listitem]);
                         SCM(playerid, X11_GREEN, string);
                     }else{
                         SCM(playerid, X11_DARK_GOLDENROD_2, "There seems to be a problem with the command please try again");
@@ -901,12 +829,11 @@ YCMD:giveplayerresource(playerid, params[], help){
         if(cache_num_rows() != 0){
             new cl = 0;
             while(cl < cache_num_rows()){
-                new rName[65];
-                cache_get_value(cl, "res_name", rName, sizeof rName);
+                cache_get_value(cl, "res_name", resName[cl], 65);
                 if(strlen(string) == 0){
-                    format(string, sizeof string, "%s", rName);
+                    format(string, sizeof string, "%s", resName[cl]);
                 }else{
-                    format(string, sizeof string, "%s\n%s", string, rName);
+                    format(string, sizeof string, "%s\n%s", string, resName[cl]);
                 }
                 cl++;
             }
@@ -950,6 +877,56 @@ YCMD:craftlist(playerid, params[], help){
 
 Store:CraftMenu(playerid, response, itemid, modelid, price, amount, itemname[]){
     if(!response) return true;
+    new query[78 + (11 * 3) + 1];
+    inline GetCraftNeeds(){
+        new cl = 0, resID[MAX_RESOURCES], resQuantity[MAX_RESOURCES], needQuantity[MAX_RESOURCES];
+        while(cl < cache_num_rows()){
+            cache_get_value_int(cl, "res_id", resID[cl]);
+            cache_get_value_int(cl, "needQuantity", needQuantity[cl]);
+            inline GetCharRes(){
+                if(cache_num_rows() != 0){
+                    cache_get_value_int(0, "cr_quantity", resQuantity[cl]);
+                }else{
+                    new string[30 + 65 + 1];
+                    format(string, sizeof string, "You lack resources to craft %s", itemname);
+                    SCM(playerid, X11_DARK_GOLDENROD_2, string);
+                    break;
+                }
+            }
+            mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d AND cr_quantity >= %d", needQuantity[cl]);
+            MySQL_TQueryInline(sampdb, using inline GetCharRes, query);
+            cl++;
+        }
+        new i = 0;
+        while(i < cl){
+            new total = resQuantity[i] - needQuantity[i], Cache: result;
+            mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", total, resID[i], pData[playerid][pID]);
+            result = mysql_query(sampdb, query);
+            if(!result){
+                SCM(playerid, X11_DARK_GOLDENROD_2, "Something went wrong with crafting, try again!");
+                break;
+            }
+            i++;
+        }
+        if(i == cl){
+            inline UpdateCharCraft(){
+                if(cache_num_rows() != 0){
+                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity += 1 WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+                    mysql_query(sampdb, query);
+                }else{
+                    mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", itemid, pData[playerid][pID]);
+                    mysql_query(sampdb, query);
+                }
+            }
+            new string[32 + 65 + 1];
+            mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d", itemid);
+            MySQL_TQueryInline(sampdb, using inline UpdateCharCraft, query);
+            format(string, sizeof string, "You have successfully crafted %s", itemname);
+            SCM(playerid, X11_GREEN, string);
+        }
+    }
+    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d", itemid);
+    MySQL_TQueryInline(sampdb, using inline GetCraftNeeds, query);
     return true;
 }
 
@@ -1203,12 +1180,11 @@ public e_COMMAND_ERRORS:OnPlayerCommandReceived(playerid, cmdtext[], e_COMMAND_E
 }
 
 
-main() {
-}
+main() {}
 
 public OnGameModeInit(){
 
-    new string[10 + (11 * 3) + 1], query[79 + 11 + 11 + 1];
+    new string[10 + (11 * 3) + 1];
     format(string, sizeof string, "v %d.%d.%d", SYNTACS_VERSION_MAJOR, SYNTACS_VERSION_MINOR, SYNTACS_VERSION_PATCH);
     SetGameModeText(string);
 
@@ -1235,66 +1211,6 @@ public OnGameModeInit(){
     __InitializeAdmins();
     __InitializeMedics();
     __SetCrafters();
-
-    Iter_Init(resList);
-
-    inline FetchResources(){
-        if(cache_num_rows() != 0){
-            for(new i = 0, j = cache_num_rows(); i < j; i++){
-                cache_get_value_int(i, "res_id", resData[i][resID]);
-                cache_get_value(i, "res_name", resData[i][resName], 65);
-                cache_get_value(i, "res_description", resData[i][resDesc], 128);
-                cache_get_value_int(i, "res_model", resData[i][resModel]);
-                cache_get_value_int(i, "res_type", resData[i][resType]);
-                cache_get_value_float(i, "res_rate", resData[i][resRate]);
-                cache_get_value_int(i, "res_price", resData[i][resPrice]);
-                cache_get_value_bool(i, "res_active", resData[i][resActive]);
-                Iter_Add(resList, i);
-            }
-        }else{
-            printf("Server Resources has not been set. Please see to it that this items are set");
-            SendRconCommand("exit");
-        }
-    }
-    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_resources ORDER BY res_id ASC LIMIT %d", MAX_RESOURCES);
-    MySQL_TQueryInline(sampdb, using inline FetchResources, query);
-
-    Iter_Init(craftList);
-    inline FetchCraftables(){
-        if(cache_num_rows() != 0){
-            for(new i = 0, j = cache_num_rows(); i < j; i++){
-                cache_get_value_int(i, "craft_id", craftData[i][craftID]);
-                cache_get_value(i, "craft_name", craftData[i][craftName], 65);
-                cache_get_value(i, "craft_desc", craftData[i][craftDesc], 128);
-                cache_get_value(i, "craft_model", craftData[i][craftModel]);
-                cache_get_value(i, "craft_type", craftData[i][craftType]);
-                cache_get_value_float(i, "craft_heal", craftData[i][craftHeal]);
-                cache_get_value_float(i, "craft_ar", craftData[i][craftAr]);
-                cache_get_value_int(i, "craft_phonelevel", craftData[i][craftPhonelvl]);
-                cache_get_value_int(i, "craft_hacklevel", craftData[i][craftHacklvl]);
-                cache_get_value_int(i, "craft_stack", craftData[i][craftStack]);
-                cache_get_value_int(i, "craft_levreq", craftData[i][craftLvlReq]);
-                cache_get_value_bool(i, "craft_active", craftData[i][craftActive]);
-                Iter_Add(craftList, i);
-                Iter_Init(cNeedList[i]);
-                inline FetchCraftNeeds(){
-                    if(cache_num_rows() != 0){
-                        for(new k = 0, l = cache_num_rows(); k < l; k++){
-                            cache_get_value_int(k, "cneed_id", cNeedsData[i][k][cNeedID]);
-                            cNeedsData[i][k][cCraftID] = craftData[i][craftID];
-                            cache_get_value_int(k, "res_id", cNeedsData[i][k][cResID]);
-                            cache_get_value_int(k, "need_quant", cNeedsData[i][k][cNeedQuantity]);
-                            Iter_Add(cNeedList[i], k);
-                        }
-                    }
-                }
-                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d ORDER BY cneed_id ASC LIMIT %d", craftData[i][craftID], MAX_NEEDS);
-                MySQL_TQueryInline(sampdb, using inline FetchCraftNeeds, query);
-            }
-        }
-    }
-    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftables ORDER BY craft_id LIMIT %d", MAX_CRAFTABLES);
-    MySQL_TQueryInline(sampdb, using inline FetchCraftables, query);
     return 1;
 }
 
