@@ -1,3 +1,7 @@
+CREATE DATABASE IF NOT EXISTS stgaming_samp;
+
+USE stgaming_samp;
+
 CREATE TABLE IF NOT EXISTS `stg_chardet` (
   `pid` int PRIMARY KEY,
   `posx` float(16, 5) NOT NULL,
