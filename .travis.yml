@@ -1,7 +1,8 @@
+version: ~> 1.0
 language: cpp
 sudo: enable
 os: linux
-dist: bionic
+dist: precise
 addons:
 - mariadb: '10.4'
 install:
