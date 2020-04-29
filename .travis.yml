@@ -1,13 +1,12 @@
 language: cpp
-sudo: enabled
 os: linux
 dist: bionic
 addons:
 - mariadb: '10.4'
 install:
 - curl https://raw.githubusercontent.com/Southclaws/sampctl/master/install-deb.sh | sh
-- dpkg --add-architecture i386
-- apt update && apt install -y g++-multilib
+- sudo dpkg --add-architecture i386
+- sudo apt update && apt install -y g++-multilib
 before_script:
 - mysql < stgaming_samp.sql
 script:
