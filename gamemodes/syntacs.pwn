@@ -71,6 +71,8 @@
 #define MAX_CRAFTABLES                  10
 #define MAX_NEEDS                       5
 
+#define MAX_TRUCKER_VEHICLES            3
+
 /* Type definitions */
 
 #define TYPE_ONLINE_PLAYERS             0
@@ -173,6 +175,8 @@ new
     killerID[MAX_PLAYERS],
     antiCrimeTime[MAX_PLAYERS],
 
+    truckerVeh[MAX_TRUCKER_VEHICLES],
+
     Timer: wantedTimer[MAX_PLAYERS],
     Timer: antiCrimeTimer[MAX_PLAYERS],
 
@@ -181,6 +185,9 @@ new
     bool: pDyingDamageImmune[MAX_PLAYERS],
     bool: isDying[MAX_PLAYERS],
     bool: isOnline[MAX_PLAYERS],
+    bool: isDoingDelivery[MAX_PLAYERS],
+    bool: isInsideTruck[MAX_PLAYERS],
+    bool: tryAnotherDelivery[MAX_PLAYERS],
     // bool: isCritical[MAX_PLAYERS],
 
     STREAMER_TAG_PICKUP: deathPickup[MAX_DEATHPICKUP],
@@ -1200,6 +1207,9 @@ public OnGameModeInit(){
     __InitializeAdmins();
     __InitializeMedics();
     __SetCrafters();
+    truckerVeh[0] = AddStaticVehicleEx(499,-1581.7013,118.7777,3.5417,220.3869,1,1, 10); // benson 1
+    truckerVeh[1] = AddStaticVehicleEx(499,-1584.6560,115.8924,3.5417,224.1900,1,1, 10); // benson 2
+    truckerVeh[2] = AddStaticVehicleEx(499,-1587.6804,112.8861,3.5414,221.6018,1,1, 10); // benson 3
     return 1;
 }
 
@@ -1274,7 +1284,7 @@ public OnPlayerDisconnect(playerid, reason){
             pData[playerid][pAdmin] = 0;
         }
         // Removing administrative level
-        if((pData[playerid][pAdmin] != 0 && pData[playerid][pAdmin] <= 6) || Group_GetPlayer(pAdmins[pData[playerid][pAdmin]], playerid) == true){
+        if(pData[playerid][pAdmin] <= 6 && pData[playerid][pAdmin] > 0){
             Group_SetPlayer(pAdmins[pData[playerid][pAdmin]], playerid, false);
             Group_SetPlayer(AdminList, playerid, false);
             pData[playerid][pAdmin] = 0;
@@ -1309,8 +1319,70 @@ public OnPlayerDisconnect(playerid, reason){
     return 1;
 }
 
+bool:__TruckerVehicle(vehicleid){
+    for(new i = 0, j = MAX_TRUCKER_VEHICLES; i < j; i++){
+        if(vehicleid == truckerVeh[i]) return true;
+    }
+    return false;
+}
+
 public OnPlayerStateChange(playerid, newstate, oldstate){
     if(newstate == oldstate) return 0;
+    if(oldstate == PLAYER_STATE_DRIVER && newstate == PLAYER_STATE_ONFOOT){
+        if(isInsideTruck[playerid] == true){
+            isInsideTruck[playerid] = false;
+            DisablePlayerCheckpoint(playerid);
+        }
+    }
+    if(oldstate == PLAYER_STATE_ONFOOT && newstate == PLAYER_STATE_DRIVER){
+        new vehicleid = GetPlayerVehicleID(playerid);
+        if(__TruckerVehicle(vehicleid) == true){
+            if(isInsideTruck[playerid] == false && isDoingDelivery[playerid] == false){
+                isInsideTruck[playerid] = true;
+                SetPlayerCheckpoint(playerid, -1694.8209,25.1236,3.5547, 2.5);
+            }
+        }
+    }
+    return 1;
+}
+
+public OnPlayerEnterCheckpoint(playerid){
+    if(IsPlayerInCheckpoint(playerid)){
+        if(isInsideTruck[playerid] == true && isDoingDelivery[playerid] == true){
+            DisablePlayerCheckpoint(playerid);
+            inline GetResourceReward(){
+                if(cache_num_rows() != 0){
+                    new cl = 0, query[84 + (11 * 2) + 1];
+                    while(cl < cache_num_rows()){
+                        new resid;
+                        cache_get_value_int(cl, "res_id", resid);
+                        inline UpdateCharRes(){
+                            if(cache_num_rows() != 0){
+                                mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = cr_quantity + 1 WHERE res_id = %d AND pid = %d", resid, pData[playerid][pID]);
+                            }else{
+                                mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charres (res_id, cr_quantity, pid) VALUES (%d, 1, %d)", resid, pData[playerid][pID]);
+                            }
+                            mysql_query(sampdb, query);
+                        }
+                        mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d", resid, pData[playerid][pID]);
+                        MySQL_TQueryInline(sampdb, using inline UpdateCharRes, query);
+                        cl++;
+                    }
+                    isDoingDelivery[playerid] = false;
+                    tryAnotherDelivery[playerid] = true;
+                    SCM(playerid, X11_GREEN, "Truck delivery success! Type Y or Yes to do another delivery otherwise type N or No");
+                }else{
+                    SCM(playerid, X11_DARK_GOLDENROD_2, "The truck was a bust, there was no resources to be shared with you.");
+                }
+            }
+            MySQL_TQueryInline(sampdb, using inline GetResourceReward, "SELECT * FROM stg_resources WHERE RAND() < 0.25");
+        }
+        if(isInsideTruck[playerid] == true && isDoingDelivery[playerid] == false){
+            DisablePlayerCheckpoint(playerid);
+            SetPlayerCheckpoint(playerid, -1701.5973,399.9795,7.0110, 2.5);
+            isDoingDelivery[playerid] = true;
+        }
+    }
     return 1;
 }
 
@@ -1459,7 +1531,18 @@ public OnPlayerText(playerid, text[]){
         return SCM(playerid, X11_FIREBRICK, "You are not allowed to use chat when not online"), 0;
     }
     if(strlen(text) >= 128){
-        return SCM(playerid, X11_FIREBRICK, "Message too long.");
+        return SCM(playerid, X11_FIREBRICK, "Message too long."), 0;
+    }
+    if(tryAnotherDelivery[playerid] == true){
+        if(strcmp(text, "yes", true) == 0 || strcmp(text, "y", true) == 0){
+            tryAnotherDelivery[playerid] = false;
+            SetPlayerCheckpoint(playerid, -1694.8209,25.1236,3.5547, 2.5);
+            SCM(playerid, X11_DARK_GOLDENROD_2, "You have accepted another truck delivery");
+        }else if(strcmp(text, "no", true) == 0 || strcmp(text, "n", true) == 0){
+            tryAnotherDelivery[playerid] = false;
+            SCM(playerid, X11_DARK_GOLDENROD_2, "You have cancelled to do another delivery job");
+        }
+        return 0;
     }
     new nameString[16 + MAX_NAME + 8 + 4], newText[144], Float: __pos[3];
     GetPlayerPos(playerid, __pos[0], __pos[1], __pos[2]);
