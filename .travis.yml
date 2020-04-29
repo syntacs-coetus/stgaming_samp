@@ -1,14 +1,15 @@
 language: cpp
 sudo: enabled
+os: linux
 dist: bionic
 services:
-- mysql
+- mariadb
 before_install:
 - mysql < stgaming_samp.sql
 install:
 - curl https://raw.githubusercontent.com/Southclaws/sampctl/master/install-deb.sh | sh
-- sudo dpkg --add-architecture i386
-- sudo apt update && sudo apt install -y g++-multilib
+- dpkg --add-architecture i386
+- apt update && apt install -y g++-multilib
 script:
 - sampctl package ensure
 - sampctl package build
