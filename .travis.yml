@@ -1,4 +1,5 @@
 language: cpp
+sudo: enable
 os: linux
 dist: bionic
 addons:
