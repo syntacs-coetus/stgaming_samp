@@ -665,7 +665,7 @@ SpawnPlayerEx(playerid){
                             defer __setPlayerWantedLevel(playerid);
                         }
                         Iter_Init(cCharResList[playerid]);
-
+                        StopAudioStreamForPlayer(playerid);
                         // After realizing that Group_GetPlayer does not work OnPlayerDisconnect I will have to make an adjustment
                         // This code will do that
                         isOnline[playerid] = true;
@@ -848,82 +848,67 @@ YCMD:giveplayerresource(playerid, params[], help){
 
 YCMD:craftlist(playerid, params[], help){
     #pragma unused params, help
-    new string[1280], Cache:result, query[110 + 11 + 1];
+    new string[1280], query[171 + 11 + 1];
     format(string, sizeof string, "Item\tQuantity");
-    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres INNER JOIN stg_resources ON stg_charres.res_id = stg_resources.res_id WHERE pid = %d", pData[playerid][pID]);
-    result = mysql_query(sampdb, query);
-    if(result){
-        new row;
-        cache_get_row_count(row);
-        if(row != 0){
+    inline GetCraftList(){
+        if(cache_num_rows() != 0){
             new rName[65], rQuantity, cl = 0;
-            while(cl < row){
-                cache_get_value(cl, "res_name", rName, sizeof rName);
-                cache_get_value_int(cl, "cr_quantity", rQuantity);
+            while(cl < cache_num_rows()){
+                cache_get_value(cl, "craft_name", rName, sizeof rName);
+                cache_get_value_int(cl, "cc_quantity", rQuantity);
                 format(string, sizeof string, "%s\n%s\t%d", string, rName, rQuantity);
+                cl++;
             }
             inline CraftList(pid, did, response, listitem, string: inputtext[]){
                 #pragma unused pid, did, response, listitem, inputtext
             }
-            Dialog_ShowCallback(playerid, using inline CraftList, DIALOG_STYLE_TABLIST_HEADERS, "Crafted Items", string, "Cancel");
+            Dialog_ShowCallback(playerid, using inline CraftList, DIALOG_STYLE_TABLIST_HEADERS, "Crafted Items", string, "Close");
         }else{
             SCM(playerid, X11_DARK_GOLDENROD_2, "You have not crafted any items");
         }
-    }else{
-        SCM(playerid, X11_DARK_GOLDENROD_2, "Something went wrong, try again");
     }
+    mysql_format(sampdb, query, sizeof query, "SELECT stg_craftables.craft_name, stg_charcraft.cc_quantity FROM stg_charcraft INNER JOIN stg_craftables ON stg_charcraft.craft_id = stg_craftables.craft_id WHERE pid = %d", pData[playerid][pID]);
+    MySQL_TQueryInline(sampdb, using inline GetCraftList, query);
     return 1;
 }
 
 Store:CraftMenu(playerid, response, itemid, modelid, price, amount, itemname[]){
     if(!response) return true;
-    new query[78 + (11 * 3) + 1];
+    new query[307 + (11 * 3) + 1], string[34 + 65 + 1];
     inline GetCraftNeeds(){
-        new cl = 0, resID[MAX_RESOURCES], resQuantity[MAX_RESOURCES], needQuantity[MAX_RESOURCES];
-        while(cl < cache_num_rows()){
-            cache_get_value_int(cl, "res_id", resID[cl]);
-            cache_get_value_int(cl, "needQuantity", needQuantity[cl]);
-            inline GetCharRes(){
-                if(cache_num_rows() != 0){
-                    cache_get_value_int(0, "cr_quantity", resQuantity[cl]);
-                }else{
-                    new string[30 + 65 + 1];
-                    format(string, sizeof string, "You lack resources to craft %s", itemname);
-                    SCM(playerid, X11_DARK_GOLDENROD_2, string);
-                    break;
-                }
-            }
-            mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d AND cr_quantity >= %d", needQuantity[cl]);
-            MySQL_TQueryInline(sampdb, using inline GetCharRes, query);
-            cl++;
-        }
-        new i = 0;
-        while(i < cl){
-            new total = resQuantity[i] - needQuantity[i], Cache: result;
-            mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", total, resID[i], pData[playerid][pID]);
-            result = mysql_query(sampdb, query);
-            if(!result){
-                SCM(playerid, X11_DARK_GOLDENROD_2, "Something went wrong with crafting, try again!");
-                break;
-            }
-            i++;
-        }
-        if(i == cl){
-            inline UpdateCharCraft(){
-                if(cache_num_rows() != 0){
-                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity += 1 WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+        new rows = cache_num_rows();
+        inline GetCharRes(){
+            if(rows == cache_num_rows()){
+                new cl = 0;
+                while(cl < cache_num_rows()){
+                    new nQuant, crQuant, resID;
+                    cache_get_value_int(cl, "res_id", resID);
+                    cache_get_value_int(cl, "cr_quantity", crQuant);
+                    cache_get_value_int(cl, "need_quant", nQuant);
+                    crQuant -= nQuant;
+                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", crQuant, resID, pData[playerid][pID]);
                     mysql_query(sampdb, query);
-                }else{
-                    mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", itemid, pData[playerid][pID]);
-                    mysql_query(sampdb, query);
+                    cl++;
                 }
+                inline GiveCharCraft(){
+                    if(cache_num_rows() != 0){
+                        mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity = cc_quantity + 1 WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+                    }else{
+                        mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", itemid, pData[playerid][pID]);
+                    }
+                    mysql_query(sampdb, query);
+                    format(string, sizeof string, "You have crafted a/an %s", itemname);
+                    SCM(playerid, X11_GREEN, string);
+                }
+                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+                MySQL_TQueryInline(sampdb, using inline GiveCharCraft, query);
+            }else{
+                format(string, sizeof string, "You lack resources for crafting %s", itemname);
+                SCM(playerid, X11_DARK_GOLDENROD_2, string);
             }
-            new string[32 + 65 + 1];
-            mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d", itemid);
-            MySQL_TQueryInline(sampdb, using inline UpdateCharCraft, query);
-            format(string, sizeof string, "You have successfully crafted %s", itemname);
-            SCM(playerid, X11_GREEN, string);
         }
+        mysql_format(sampdb, query, sizeof query, "SELECT stg_charres.res_id, stg_charres.cr_quantity, stg_craftneeds.need_quant FROM stg_craftneeds INNER JOIN stg_charres ON stg_craftneeds.res_id = stg_charres.res_id WHERE stg_charres.cr_quantity >= stg_craftneeds.need_quant AND craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline GetCharRes, query);
     }
     mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d", itemid);
     MySQL_TQueryInline(sampdb, using inline GetCraftNeeds, query);
@@ -934,8 +919,8 @@ YCMD:craft(playerid, params[], help){
     #pragma unused params, help
     inline FetchCraftables(){
         if(cache_num_rows() != 0){
-            new cl = 0, cID, cName[65], cDesc[128], descString[1280], cModel, cStack, Cache:result;
-            while(cl < cache_num_rows()){
+            new cl = 0, cID, cName[65], cDesc[128], descString[1280], cModel, cStack, Cache:result, outerRow = cache_num_rows(), Cache:outerResult = cache_save();
+            while(cl < outerRow){
                 cache_get_value_int(cl, "craft_id", cID);
                 cache_get_value(cl, "craft_name", cName, sizeof cName);
                 cache_get_value(cl, "craft_desc", cDesc, sizeof cDesc);
@@ -945,29 +930,33 @@ YCMD:craft(playerid, params[], help){
                 mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds INNER JOIN stg_resources ON stg_craftneeds.res_id = stg_resources.res_id WHERE stg_craftneeds.craft_id = %d", cID);
                 result = mysql_query(sampdb, query);
                 if(result){
-                    new row;
-                    cache_get_row_count(row);
+                    new row = cache_num_rows();
                     if(row != 0){
-                        new cnL = 0, cnName[65], cnQuantity;
+                        new cnL = 0, cnName[65], cnQuantity, cnPrice, total = 0;
                         format(descString, sizeof descString, "~y~%s~n~~n~~r~Requirements:", cDesc);
                         while(cnL < row){
                             cache_get_value(cnL, "res_name", cnName, sizeof cnName);
                             cache_get_value_int(cnL, "need_quant", cnQuantity);
+                            cache_get_value_int(cnL, "res_price", cnPrice);
+                            total += cnPrice * cnQuantity;
                             format(descString, sizeof descString, "%s~n~~g~%s: ~w~%dx", descString, cnName, cnQuantity);
                             cnL++;
                         }
-                        MenuStore_AddItem(playerid, cID, cModel, cName, 0, descString, .description_size = 10.0, .stack = cStack);
+                        MenuStore_AddItem(playerid, cID, cModel, cName, total, descString, .description_size = 10.0, .stack = cStack);
                     }
                 }
                 cache_delete(result);
+                if(cache_is_valid(outerResult)){
+                    cache_set_active(outerResult);
+                }
                 cl++;
             }
-            MenuStore_Show(playerid, CraftMenu, "Craft Menu");
+            MenuStore_Show(playerid, CraftMenu, "Craft Menu", .button_confirm="Craft");
         }else{
             SCM(playerid, X11_DARK_GOLDENROD_2, "There are no craftable items for the server");
         }
     }
-    MySQL_TQueryInline(sampdb, using inline FetchCraftables, "SELECT * FROM stg_craftables");
+    MySQL_TQueryInline(sampdb, using inline FetchCraftables, "SELECT * FROM stg_craftables WHERE craft_active = 1");
     return 1;
 }
 
@@ -1230,6 +1219,8 @@ public OnPlayerConnect(playerid){
 
     TogglePlayerControllable(playerid, FALSE);
     TogglePlayerSpectating(playerid, TRUE);
+
+    PlayAudioStreamForPlayer(playerid, "https://www.mboxdrive.com/bensound-dubstep.mp3");
     
 	static const empty_player[pInfo];
 	pData[playerid] = empty_player;
