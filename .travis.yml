@@ -7,7 +7,7 @@ addons:
 install:
 - curl https://raw.githubusercontent.com/Southclaws/sampctl/master/install-deb.sh | sh
 - sudo dpkg --add-architecture i386
-- sudo apt update && apt install -y g++-multilib
+- sudo apt update && sudo apt install -y g++-multilib
 before_script:
 - mysql < stgaming_samp.sql
 script:
