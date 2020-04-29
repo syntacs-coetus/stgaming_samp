@@ -2,7 +2,7 @@ version: ~> 1.0
 language: cpp
 sudo: enable
 os: linux
-dist: precise
+dist: bionic
 addons:
 - mariadb: '10.4'
 install:
@@ -10,7 +10,7 @@ install:
 - sudo dpkg --add-architecture i386
 - sudo apt update && sudo apt install -y g++-multilib
 before_script:
-- mysql -u travis < stgaming_samp.sql
+- sudo mysql < stgaming_samp.sql
 script:
 - sampctl package ensure
 - sampctl package build
