@@ -33,7 +33,7 @@
 #include <streamer>
 #include <formatex>
 
-#define SERVER_RATE             1
+#define SERVER_RATE                     1
 
 // Time definitions
 #define IMMUNITY_TIME                   5
@@ -126,6 +126,10 @@
 #define CRAFT_ARMOUR                    1
 #define CRAFT_PHONE                     2
 #define CRAFT_HACK                      3
+
+/* Code Defines for Items and other things */
+#define CODE_RESOURCES                  1000
+#define CODE_CRAFTABLES                 2000
 
 enum pInfo{
     pID,
@@ -332,6 +336,7 @@ __SetCommands(const command[], ctype, level = 0){
             Group_SetCommand(pOwners, id, true);
         }
     }
+    return 1;
 }
 
 __InitializeOnline(){
@@ -341,6 +346,8 @@ __InitializeOnline(){
     __SetCommands("adminsonline", TYPE_ONLINE_PLAYERS);
     __SetCommands("buy", TYPE_ONLINE_PLAYERS);
     __SetCommands("checkresources", TYPE_ONLINE_PLAYERS);
+    __SetCommands("testbuy", TYPE_ONLINE_PLAYERS);
+    return 1;
 }
 
 /* INITIALIZE MEDICS */
@@ -352,16 +359,6 @@ __InitializeMedics(){
         Group_SetColor(pAdmins[i], MedicColors[i - 1]);
     }
     return 1;
-}
-
-__GetWeaponID(modelid){
-    new wepid = 0;
-    switch(modelid){
-        case 355:{
-            wepid = 30;
-        }
-    }
-    return wepid;
 }
 
 __GetWeaponSlot(weaponid){
@@ -755,29 +752,81 @@ __GivePlayerResources(playerid, resourcesID, quantity){
 Store:ItemShop(playerid, response, itemid, modelid, price, amount, itemname[]){
     if(!response) return true;
     if(pData[playerid][pMoney] < price) return SCM(playerid, X11_FIREBRICK, "You do not have enough cash"), true;
-    new string[128];
-    switch(itemid){
-        case 1:{
-            if(antiCrime[playerid] == true) return SCM(playerid, X11_FIREBRICK, "Your anti-crime detector is still active!"), true;
-            antiCrimeTime[playerid] = 1800;
-            antiCrime[playerid] = true;
-            antiCrimeTimer[playerid] = repeat __AntiCrimeCountdown(playerid);
-            pData[playerid][pMoney] -= price;
-            
-            formatex(string, sizeof string, "You have bought an %s", itemname);
-            SCM(playerid, X11_GREEN, string);
-            defer __GivePlayerMoney(playerid);
-        }
-        case 2:{
-            new wepid = __GetWeaponID(modelid);
-            __GivePlayerWeapons(playerid, wepid, 30 * amount);
+    if(itemid > CODE_CRAFTABLES){
+        new id = itemid - CODE_CRAFTABLES, query[87 + (11 * 2) + 1];
+        inline CheckCraftables(){
+            if(cache_num_rows() != 0){
+                mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity = cc_quantity + 1 WHERE craft_id = %d AND pid = %d", id, pData[playerid][pID]);
+            }else{
+                mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", id, pData[playerid][pID]);
+            }
             pData[playerid][pMoney] -= price;
             defer __GivePlayerMoney(playerid);
-            formatex(string, sizeof string, "You have bought a/an %s for $%d", itemname, price);
-            SCM(playerid, X11_GREEN, string);
+            mysql_query(sampdb, query);
         }
+        mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d AND pid = %d", id, pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline CheckCraftables, query);
+    }else if(itemid > CODE_RESOURCES){
+        new id = itemid - CODE_RESOURCES, query[83 + (11 * 2) + 1];
+        inline CheckResources(){
+            if(cache_num_rows() != 0){
+                mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = cr_quantity + 1 WHERE res_id = %d AND pid = %d", id, pData[playerid][pID]);
+            }else{
+                mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charres (res_id, pid, cr_quantity) VALUES (%d, %d, 1)", id, pData[playerid][pID]);
+            }
+            pData[playerid][pMoney] -= price;
+            defer __GivePlayerMoney(playerid);
+            mysql_query(sampdb, query);
+        }
+        mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d", id, pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline CheckResources, query);
     }
     return 1;
+}
+
+
+
+Store:CraftMenu(playerid, response, itemid, modelid, price, amount, itemname[]){
+    if(!response) return true;
+    new query[307 + (11 * 3) + 1], string[34 + 65 + 1];
+    inline GetCraftNeeds(){
+        new rows = cache_num_rows();
+        inline GetCharRes(){
+            if(rows == cache_num_rows()){
+                new cl = 0;
+                while(cl < cache_num_rows()){
+                    new nQuant, crQuant, resID;
+                    cache_get_value_int(cl, "res_id", resID);
+                    cache_get_value_int(cl, "cr_quantity", crQuant);
+                    cache_get_value_int(cl, "need_quant", nQuant);
+                    crQuant -= nQuant;
+                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", crQuant, resID, pData[playerid][pID]);
+                    mysql_query(sampdb, query);
+                    cl++;
+                }
+                inline GiveCharCraft(){
+                    if(cache_num_rows() != 0){
+                        mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity = cc_quantity + 1 WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+                    }else{
+                        mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", itemid, pData[playerid][pID]);
+                    }
+                    mysql_query(sampdb, query);
+                    format(string, sizeof string, "You have crafted a/an %s", itemname);
+                    SCM(playerid, X11_GREEN, string);
+                }
+                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+                MySQL_TQueryInline(sampdb, using inline GiveCharCraft, query);
+            }else{
+                format(string, sizeof string, "You lack resources for crafting %s", itemname);
+                SCM(playerid, X11_DARK_GOLDENROD_2, string);
+            }
+        }
+        mysql_format(sampdb, query, sizeof query, "SELECT stg_charres.res_id, stg_charres.cr_quantity, stg_craftneeds.need_quant FROM stg_craftneeds INNER JOIN stg_charres ON stg_craftneeds.res_id = stg_charres.res_id WHERE stg_charres.cr_quantity >= stg_craftneeds.need_quant AND craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
+        MySQL_TQueryInline(sampdb, using inline GetCharRes, query);
+    }
+    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d", itemid);
+    MySQL_TQueryInline(sampdb, using inline GetCraftNeeds, query);
+    return true;
 }
 
 YCMD:checkresources(playerid, params[], help){
@@ -879,49 +928,6 @@ YCMD:craftlist(playerid, params[], help){
     return 1;
 }
 
-Store:CraftMenu(playerid, response, itemid, modelid, price, amount, itemname[]){
-    if(!response) return true;
-    new query[307 + (11 * 3) + 1], string[34 + 65 + 1];
-    inline GetCraftNeeds(){
-        new rows = cache_num_rows();
-        inline GetCharRes(){
-            if(rows == cache_num_rows()){
-                new cl = 0;
-                while(cl < cache_num_rows()){
-                    new nQuant, crQuant, resID;
-                    cache_get_value_int(cl, "res_id", resID);
-                    cache_get_value_int(cl, "cr_quantity", crQuant);
-                    cache_get_value_int(cl, "need_quant", nQuant);
-                    crQuant -= nQuant;
-                    mysql_format(sampdb, query, sizeof query, "UPDATE stg_charres SET cr_quantity = %d WHERE res_id = %d AND pid = %d", crQuant, resID, pData[playerid][pID]);
-                    mysql_query(sampdb, query);
-                    cl++;
-                }
-                inline GiveCharCraft(){
-                    if(cache_num_rows() != 0){
-                        mysql_format(sampdb, query, sizeof query, "UPDATE stg_charcraft SET cc_quantity = cc_quantity + 1 WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
-                    }else{
-                        mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charcraft (craft_id, pid, cc_quantity) VALUES (%d, %d, 1)", itemid, pData[playerid][pID]);
-                    }
-                    mysql_query(sampdb, query);
-                    format(string, sizeof string, "You have crafted a/an %s", itemname);
-                    SCM(playerid, X11_GREEN, string);
-                }
-                mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charcraft WHERE craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
-                MySQL_TQueryInline(sampdb, using inline GiveCharCraft, query);
-            }else{
-                format(string, sizeof string, "You lack resources for crafting %s", itemname);
-                SCM(playerid, X11_DARK_GOLDENROD_2, string);
-            }
-        }
-        mysql_format(sampdb, query, sizeof query, "SELECT stg_charres.res_id, stg_charres.cr_quantity, stg_craftneeds.need_quant FROM stg_craftneeds INNER JOIN stg_charres ON stg_craftneeds.res_id = stg_charres.res_id WHERE stg_charres.cr_quantity >= stg_craftneeds.need_quant AND craft_id = %d AND pid = %d", itemid, pData[playerid][pID]);
-        MySQL_TQueryInline(sampdb, using inline GetCharRes, query);
-    }
-    mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_craftneeds WHERE craft_id = %d", itemid);
-    MySQL_TQueryInline(sampdb, using inline GetCraftNeeds, query);
-    return true;
-}
-
 YCMD:craft(playerid, params[], help){
     #pragma unused params, help
     inline FetchCraftables(){
@@ -969,8 +975,65 @@ YCMD:craft(playerid, params[], help){
 
 YCMD:buy(playerid, params[], help){
     #pragma unused playerid, params, help
-    MenuStore_AddItem(playerid, 1, 19513, "Anti-Crime Kit", 2500, "A kit that avoids the detection of cops for 30 mins");
-    MenuStore_AddItem(playerid, 2, 355, "AK-47", 300, "A Russian made Assualt Rifle", .zoom = 1.75);
+    // Resources
+    if(IsPlayerInRangeOfPoint(playerid, 1.0, -1600.3063,104.6080,3.5495)){
+        new Cache: result;
+        result = mysql_query(sampdb, "SELECT * FROM stg_resources WHERE res_buyable = 1 AND res_black != 1");
+        if(result){
+            if(cache_num_rows() != 0){
+                new resid, resname[65], resdesc[128], resmodel, resprice, cl = 0;
+                while(cl < cache_num_rows()){
+                    cache_get_value_int(cl, "res_id", resid);
+                    cache_get_value(cl, "res_name", resname, sizeof resname);
+                    cache_get_value(cl, "res_description", resdesc, sizeof resdesc);
+                    cache_get_value_int(cl, "res_model", resmodel);
+                    cache_get_value_int(cl, "res_price", resprice);
+                    MenuStore_AddItem(playerid, CODE_RESOURCES + resid, resmodel, resname, resprice, resdesc);
+                    cl++;
+                }
+            }
+        }
+        cache_delete(result);
+    }else if(IsPlayerInRangeOfPoint(playerid, 1.0, -1606.1849,102.1914,3.5547)){
+        new Cache: result;
+        result = mysql_query(sampdb, "SELECT * FROM stg_resources WHERE res_buyable = 1 AND res_black = 1");
+        if(result){
+            if(cache_num_rows() != 0){
+                new resid, resname[65], resdesc[128], resmodel, resprice, cl = 0;
+                while(cl < cache_num_rows()){
+                    cache_get_value_int(cl, "res_id", resid);
+                    cache_get_value(cl, "res_name", resname, sizeof resname);
+                    cache_get_value(cl, "res_description", resdesc, sizeof resdesc);
+                    cache_get_value_int(cl, "res_model", resmodel);
+                    cache_get_value_int(cl, "res_price", resprice);
+                    MenuStore_AddItem(playerid, CODE_RESOURCES + resid, resmodel, resname, resprice, resdesc);
+                    cl++;
+                }
+            }
+        }
+        cache_delete(result);
+    }else if(IsPlayerInRangeOfPoint(playerid, 1.0, -1597.2112,107.1210,3.5495)){
+        new Cache: result;
+        result = mysql_query(sampdb, "SELECT * FROM stg_craftables");
+        if(result){
+            if(cache_num_rows() != 0){
+                new craftid, craftname[65], craftdesc[128], craftmodel, craftprice, cl = 0, Cache: inResult, query[143 + 11 + 1];
+                while(cl < cache_num_rows()){
+                    cache_get_value_int(cl, "craft_id", craftid);
+                    cache_get_value(cl, "craft_name", craftname, sizeof craftname);
+                    cache_get_value(cl, "craft_desc", craftdesc, sizeof craftdesc);
+                    cache_get_value_int(cl, "craft_model", craftmodel);
+                    mysql_format(sampdb, query, sizeof query, "SELECT SUM(res_price) AS total FROM stg_craftneeds INNER JOIN stg_resources ON stg_craftneeds.res_id = stg_resources.res_id WHERE craft_id = %d", craftid);
+                    inResult = mysql_query(sampdb, query);
+                    if(inResult){
+                        cache_get_value_int(cl, "total", craftprice);
+                    }
+                    MenuStore_AddItem(playerid, CODE_RESOURCES + craftid, craftmodel, craftname, craftprice, craftdesc);
+                    cl++;
+                }
+            }
+        }
+    }
     MenuStore_Show(playerid, ItemShop, "Item Shop");
     return 1;
 }
@@ -1207,9 +1270,16 @@ public OnGameModeInit(){
     __InitializeAdmins();
     __InitializeMedics();
     __SetCrafters();
+
+    /* VEHICLES */
     truckerVeh[0] = AddStaticVehicleEx(499,-1581.7013,118.7777,3.5417,220.3869,1,1, 10); // benson 1
     truckerVeh[1] = AddStaticVehicleEx(499,-1584.6560,115.8924,3.5417,224.1900,1,1, 10); // benson 2
     truckerVeh[2] = AddStaticVehicleEx(499,-1587.6804,112.8861,3.5414,221.6018,1,1, 10); // benson 3
+
+    /* PICKUPS */
+    CreatePickup(19832, 1,-1606.1849,102.1914,3.5547); // Resources
+    CreatePickup(1275, 1,-1600.3063,104.6080,3.5495); // Black Market
+    CreatePickup(2709, 1, -1597.2112,107.1210,3.5495); // Craftables
     return 1;
 }
 
@@ -1362,6 +1432,8 @@ public OnPlayerEnterCheckpoint(playerid){
                             }else{
                                 mysql_format(sampdb, query, sizeof query, "INSERT INTO stg_charres (res_id, cr_quantity, pid) VALUES (%d, 1, %d)", resid, pData[playerid][pID]);
                             }
+                            pData[playerid][pMoney] += 100;
+                            defer __GivePlayerMoney(playerid);
                             mysql_query(sampdb, query);
                         }
                         mysql_format(sampdb, query, sizeof query, "SELECT * FROM stg_charres WHERE res_id = %d AND pid = %d", resid, pData[playerid][pID]);
@@ -1375,7 +1447,7 @@ public OnPlayerEnterCheckpoint(playerid){
                     SCM(playerid, X11_DARK_GOLDENROD_2, "The truck was a bust, there was no resources to be shared with you.");
                 }
             }
-            MySQL_TQueryInline(sampdb, using inline GetResourceReward, "SELECT * FROM stg_resources WHERE RAND() < 0.25");
+            MySQL_TQueryInline(sampdb, using inline GetResourceReward, "SELECT * FROM stg_resources WHERE RAND() < 0.10");
         }
         if(isInsideTruck[playerid] == true && isDoingDelivery[playerid] == false){
             DisablePlayerCheckpoint(playerid);
@@ -1837,10 +1909,17 @@ timer __SetPlayerScoreBoard[100](playerid){
 }
 
 timer __GivePlayerMoney[100](playerid){
-    if(GetPlayerMoney(playerid) != 0){
-        ResetPlayerMoney(playerid);
+    inline GiveMoney(){
+        if(cache_affected_rows() != 0){
+            if(GetPlayerMoney(playerid) != 0){
+                ResetPlayerMoney(playerid);
+            }
+            GivePlayerMoney(playerid, pData[playerid][pMoney]);
+        }
     }
-    GivePlayerMoney(playerid, pData[playerid][pMoney]);
+    new query[48 + (11 * 2) + 1];
+    mysql_format(sampdb, query, sizeof query, "UPDATE stg_chardet SET pmoney = %d WHERE pid = %d", pData[playerid][pMoney], pData[playerid][pID]);
+    MySQL_TQueryInline(sampdb, using inline GiveMoney, query);
 }
 
 timer __SetPlayerSkin[100](playerid){
