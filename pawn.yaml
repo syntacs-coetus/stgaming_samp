@@ -19,6 +19,7 @@ dependencies:
 - Southclaws/formatex
 - CoyStark/MenuStore
 - NexiusTailer/Nex-AC
+- sampctl/mapfix
 runtime:
   maxnpc: 10
   hostname: "STGaming"
